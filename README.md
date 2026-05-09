@@ -1,3 +1,5 @@
+<img width="850" height="422" alt="swat-ui" src="https://github.com/user-attachments/assets/84bffa93-7be4-4f97-b17c-5e72f6c1dfbc" />
+
 # SWAT — System Window Abstraction Toolkit
 
 SWAT is a thin Java layer over the host OS's native UI toolkit. Every widget is a real native component — `NSButton` on macOS, `GtkButton` on Linux, `Microsoft.UI.Xaml.Controls.Button` on Windows — driven directly through Java 25's Foreign Function & Memory API. No JNI, no JNA, no bundled C wrapper, no shipped `.so` / `.dll` / `.dylib`. SWAT is **not** a portable runtime that paints its own widgets like Swing or Compose Desktop, not a Skia-rendered canvas dressed up to look native, and not a pluggable Look-and-Feel imitation. The host provides the UI; SWAT just talks to it. The trade is explicit: SWAT will only ever target macOS, Linux (GTK 4 + libadwaita), and Windows (WinUI 3) — but on each of those, apps inherit native look, feel, theming, accessibility, IME, accent colors, and animation for free, because there is nothing in between the Java code and the OS toolkit.
