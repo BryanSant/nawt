@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-progress runs when a new commit lands on the same ref.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS / AppKit
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble + check
+        run: ./gradlew assemble check
+
+      - name: Tier 1 smoke (NSApp on the JVM main thread)
+        run: ./gradlew :swat-samples:tier1Smoke
+
+  linux:
+    name: Linux / GTK 4 + libadwaita
+    # Ubuntu 24.04 ships GTK 4.14 and libadwaita 1.5 — meets SWAT's minimum.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GTK 4 + libadwaita + Xvfb + dbus
+        # libgtk-4-dev pulls libgtk-4-1 + GLib + GObject.
+        # libadwaita-1-dev pulls libadwaita-1-0.
+        # xvfb gives a headless X server; dbus-x11 gives a session bus so the
+        # SystemTray watcher probe doesn't error on a totally bare environment.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-4-dev libadwaita-1-dev xvfb dbus-x11
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble + check
+        run: ./gradlew assemble check
+
+      - name: Tier 1 smoke (under Xvfb + dbus session)
+        # xvfb-run wraps the command in a fresh X server.
+        # dbus-run-session wraps in a fresh session bus so GDBus connects.
+        run: |
+          xvfb-run -a dbus-run-session -- ./gradlew :swat-samples:tier1Smoke

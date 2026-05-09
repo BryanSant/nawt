@@ -1,0 +1,60 @@
+# --- Gradle ---
+.gradle/
+build/
+**/build/
+out/
+bin/
+local.properties
+gradle-app.setting
+.gradletasknamecache
+
+# --- IntelliJ IDEA ---
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- VS Code ---
+.vscode/
+*.code-workspace
+
+# --- Eclipse ---
+.classpath
+.project
+.settings/
+
+# --- NetBeans ---
+nbproject/private/
+nbbuild/
+nbdist/
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# --- Windows ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Linux ---
+.directory
+.Trash-*
+
+# --- Editor swap / backup files ---
+*~
+*.swp
+*.swo
+.\#*
+\#*\#
+
+# --- JVM crash reports ---
+hs_err_pid*.log
+replay_pid*.log
+
+# --- Logs ---
+*.log
+
+# --- Local tool / agent state ---
+.claude/

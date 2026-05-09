@@ -1,0 +1,3 @@
+plugins {
+    id("swat-conventions")
+}
