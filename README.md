@@ -1,14 +1,62 @@
-# SWAT — System Widget Abstraction Toolkit
+# SWAT — System Window Abstraction Toolkit
 
-A Java UI toolkit that draws **native widgets** on three desktop platforms — and only those three:
+SWAT is a thin Java layer over the host OS's native UI toolkit. Every widget is a real native component — `NSButton` on macOS, `GtkButton` on Linux, `Microsoft.UI.Xaml.Controls.Button` on Windows — driven directly through Java 25's Foreign Function & Memory API. No JNI, no JNA, no bundled C wrapper, no shipped `.so` / `.dll` / `.dylib`. SWAT is **not** a portable runtime that paints its own widgets like Swing or Compose Desktop, not a Skia-rendered canvas dressed up to look native, and not a pluggable Look-and-Feel imitation. The host provides the UI; SWAT just talks to it. The trade is explicit: SWAT will only ever target macOS, Linux (GTK 4 + libadwaita), and Windows (WinUI 3) — but on each of those, apps inherit native look, feel, theming, accessibility, IME, accent colors, and animation for free, because there is nothing in between the Java code and the OS toolkit.
+
+## Supported platforms
 
 | Platform | Backend | Required runtime |
 | --- | --- | --- |
-| **macOS** | AppKit (Cocoa) via Panama FFM | macOS 14+ |
-| **Linux** | **GTK 4 + libadwaita** via Panama FFM | GTK 4.10+ and libadwaita 1.5+ |
-| **Windows** | WinUI 3 via Panama FFM (planned) | Windows App SDK 1.7+ |
+| **macOS** | AppKit (Cocoa) | macOS 14+ |
+| **Linux** | **GTK 4 + libadwaita** | GTK 4.10+ and libadwaita 1.5+ |
+| **Windows** | WinUI 3 | Windows App SDK 1.7+ |
 
-SWAT is **not** a portable runtime that paints its own widgets. Every Button you see is a real `NSButton` / `GtkButton` / `Microsoft.UI.Xaml.Controls.Button` on the host. There is no embedded Skia, no Qt port, no Swing-style emulation layer. The cost of that choice is that SWAT will only ever support these three platforms; the benefit is that SWAT apps look, feel, and behave like the host OS expects — including system theming, accessibility, IME, accent colors, and animation.
+## Heritage: a spiritual successor to AWT and SWT
+
+SWAT is the third Java attempt at the same idea: *one Java API, real native widgets underneath.*
+
+- **AWT** (1995) introduced the "peer" model — thin Java objects backed by native widgets. The premise was right, the execution was constrained by its time. AWT had to ship on every Java platform, so it collapsed to the lowest common denominator of Motif, Win32, and classic Mac. JNI was the only way down to native code, threading rules across X11/Win32/Mac were irreconcilable, and the API ossified before the host toolkits matured. Sun gave up and built Swing on top of it.
+- **SWT** (Eclipse, 2001) revived the peer model with conviction: real `GtkButton`, real `HWND`, real Carbon/Cocoa controls, no compromises on look and feel. It powered Eclipse for two decades and proved the approach works at scale. But SWT inherited JNI's costs — every supported platform needed a hand-written, hand-shipped native fragment (`libswt-gtk-*.so`, `swt-win32-*.dll`, `libswt-cocoa-*.jnilib`), each pinned to a specific OS/arch/widget-toolkit triple. Adding a platform meant a new C codebase. Keeping up with GTK 2 → 3 → 4 meant rewriting the C codebase. The build matrix and the lifecycle pain are why SWT never escaped Eclipse's gravity well.
+
+SWAT keeps the peer model — the part both AWT and SWT got right — and discards the part that broke them: **JNI and shipped native fragments**. There is no C in this repository. There is no `.so` / `.dll` / `.dylib` we compile or distribute. The Java module loads the host's already-installed AppKit / GTK / WinUI shared libraries directly through `java.lang.foreign` and calls them. That single change — possible only on a recent JDK — is what makes "native widgets from Java" worth attempting again.
+
+## How SWAT relates to the alternatives
+
+| Toolkit | Strategy | What you get | What it costs |
+| --- | --- | --- | --- |
+| **AWT** | Native peers via JNI, lowest-common-denominator API | Real native widgets (in 1996 terms) | Frozen at the LCD; JNI for every platform; abandoned |
+| **Swing** | Pure-Java rendering on top of an AWT `Canvas` | Total cross-platform consistency, deep API | Never actually native — pluggable Look-and-Feel imitates the host but always lags it; no real accessibility, IME, or system theming |
+| **SWT** | Native peers via per-platform JNI fragments | Genuinely native look and feel | Hand-written C glue per platform/version; heavy build/release matrix; widget gaps when the host toolkit moves faster than the C bindings |
+| **JavaFX** | Own scene graph rendered through Prism (and Skia in newer forks) | Modern API, animations, GPU acceleration | Looks like JavaFX everywhere; not native widgets |
+| **Skia / Skiko / Compose Desktop** | One Skia-painted UI per pixel on every OS | Pixel-perfect identical output, designer-friendly | Identical output is the *anti*-goal here — no real `NSButton` means no AppKit accent tracking, no GNOME accent color, no platform IME, second-class accessibility |
+| **SWAT** | Native peers via Panama FFM directly to the host toolkit | Genuinely native look, feel, accessibility, theming, animation | Three platforms only; each backend is opinionated about its host (e.g., GNOME-class Linux, not KDE) |
+
+Swing and Skia/Skiko optimize for *the same UI everywhere*. SWAT optimizes for *the right UI on each host*. Both are legitimate goals; they are not the same goal. If you want one canvas painted identically on every desktop, Compose Multiplatform or JavaFX is the better tool. If you want a Mac app that an AppKit user can't tell from Swift, a GNOME app a GTK user can't tell from Vala, and a Windows app a WinUI user can't tell from C# — that's what SWAT is for.
+
+## Why this approach is finally viable
+
+The peer model was always the right idea. Two recent shifts make it practical in 2026 in a way it wasn't in 1995 or 2001.
+
+**1. Java 25 ships stable FFM.** The Foreign Function & Memory API (`java.lang.foreign`) was finalized in JDK 22 and has shipped as a stable, non-incubating API in every release since. SWAT targets JDK 25 (LTS) with `--enable-native-access`. That gives us:
+
+- Direct calls into `libobjc`, `libgtk-4`, `libadwaita-1`, and the WinRT ABI with no C, no `javah`, no per-platform `.so` to compile and ship.
+- `MemorySegment` / `Arena` / `MemoryLayout` for safe, scoped, structured native memory — far better than `sun.misc.Unsafe` or the manual `byte[]` marshalling that AWT and SWT had to invent.
+- Method handles that are JIT-friendly and GC-safe, so the call into a `gtk_button_new` is genuinely cheap.
+- A clean module boundary: each backend is a JPMS module, selected at runtime via `ServiceLoader`.
+
+SWT predates all of this. SWT was *forced* to invent its own hand-written C bridge per platform because, in 2001, that was the only way Java could call a C ABI at speed. It is no longer the only way, and it is no longer the best way.
+
+**2. The three modern desktop toolkits have converged.** AppKit, WinUI 3, and GTK 4 + libadwaita have, independently, arrived at strikingly similar widget vocabularies:
+
+- Title-bar / header-bar fusion (`NSToolbar` unified style, `AdwHeaderBar` in `AdwToolbarView`, WinUI `TitleBar`).
+- First-class dark mode with system accent color tracking.
+- Async file/save/folder pickers as the standard idiom (`NSOpenPanel`, `GtkFileDialog` 4.10, `FileOpenPicker`).
+- Toast / banner overlays (`AdwToastOverlay`, WinUI `InfoBar`, custom `NSBox` is the conventional Mac shape).
+- Adaptive split views, sidebars, and navigation patterns that map across the three (`NSSplitViewController`, `AdwNavigationSplitView`, `NavigationView`).
+- Spring/easing animations, popovers, and modern accessibility trees.
+
+This convergence is what lets a single SWAT API like `HeaderBar` cleanly resolve to all three peers without resorting to LCD compromises. AWT couldn't do this in 1995 because Motif, Win32, and Mac OS Classic had genuinely different mental models. The 2026 trio does not.
+
+Put together: Panama FFM removes the *implementation* obstacle that crushed SWT's release process, and toolkit convergence removes the *design* obstacle that crushed AWT's API. Neither was true the last time someone tried this in Java.
 
 ## Mission
 
