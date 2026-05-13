@@ -1,5 +1,7 @@
 package io.github.swat.backend.macos;
 
+import io.github.swat.spi.Alignment;
+import io.github.swat.spi.ChildLayoutConfig;
 import io.github.swat.spi.ContainerConfig;
 import io.github.swat.spi.ContainerPeer;
 import io.github.swat.spi.Orientation;
@@ -21,31 +23,28 @@ final class MacosContainerPeer implements ContainerPeer {
     private final MemorySegment view; // NSStackView, retained
     private final boolean vertical;
     private final int padding;
+    private final Alignment crossAxis;
 
     MacosContainerPeer(ContainerConfig cfg) {
-        // [[NSStackView alloc] init]
         MemorySegment v = Objc.sendPtr(Objc.send_alloc(Objc.cls("NSStackView")), Objc.sel("init"));
 
         this.vertical = cfg.orientation() == Orientation.VERTICAL;
         this.padding = cfg.padding();
-        // setOrientation: 0 = horizontal, 1 = vertical
+        this.crossAxis = cfg.crossAxis();
         Objc.sendVoidLong(v, Objc.sel("setOrientation:"), vertical ? 1L : 0L);
 
-        // Cross-axis alignment: Leading=5 for vertical (children left-aligned)
-        // / Top=3 for horizontal. NSLayoutAttributeWidth (7) is documented as
-        // "stretch children" but on macOS the actual behavior is right-align.
-        // Combined with the per-child cross-axis width constraint added in
-        // append(), this gives Column/Row "children fill cross-axis" semantics.
-        long alignment = vertical ? 5L : 3L;
-        Objc.sendVoidLong(v, Objc.sel("setAlignment:"), alignment);
+        // NSStackView's positional cross-axis alignment is set once for the
+        // whole stack. We map the container's crossAxis to the closest
+        // NSLayoutAttribute. The per-child STRETCH/non-STRETCH split is then
+        // handled in append() by conditionally adding the cross-axis stretch
+        // constraint — see LAYOUT.md for the contract.
+        Objc.sendVoidLong(v, Objc.sel("setAlignment:"), stackAlignmentFor(vertical, crossAxis));
 
-        // setSpacing: (CGFloat)
         try {
             Objc.msgSend(FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, Objc.CGFLOAT))
                 .invoke(v, Objc.sel("setSpacing:"), (double) cfg.spacing());
         } catch (Throwable t) { throw new RuntimeException(t); }
 
-        // setEdgeInsets: NSEdgeInsets (4 doubles, by value)
         if (cfg.padding() > 0) {
             try (var arena = java.lang.foreign.Arena.ofConfined()) {
                 MemorySegment insets = arena.allocate(NSEDGE_INSETS);
@@ -61,16 +60,11 @@ final class MacosContainerPeer implements ContainerPeer {
             }
         }
 
-        // setTranslatesAutoresizingMaskIntoConstraints:NO — Auto Layout drives
-        // this view's frame inside its parent.
         Objc.sendVoidBool(v, Objc.sel("setTranslatesAutoresizingMaskIntoConstraints:"), false);
 
-        // setDistribution: NSStackViewDistributionFill = 0.
-        // Children stack at intrinsic size along the orientation axis. No
-        // slack is generated because the document view inside ScrollContainer
-        // is anchored at intrinsic height (top-pinned, no bottom pin). At
-        // top-level, the window content view fills the window and one child
-        // with low hugging priority absorbs slack — the typical layout idiom.
+        // NSStackViewDistributionFill (0): children stack at intrinsic size
+        // along the main axis; slack flows to children with the lowest hugging
+        // priority — which is exactly how ChildLayoutConfig.expand works.
         Objc.sendVoidLong(v, Objc.sel("setDistribution:"), 0L);
 
         this.view = Objc.sendPtr(v, Objc.sel("retain"));
@@ -80,27 +74,76 @@ final class MacosContainerPeer implements ContainerPeer {
 
     @Override
     public void append(Peer child) {
+        append(child, ChildLayoutConfig.DEFAULT);
+    }
+
+    @Override
+    public void append(Peer child, ChildLayoutConfig hints) {
         MemorySegment subview = peerView(child);
-        addArrangedFillingCrossAxis(view, subview, vertical, padding);
+        Alignment effective = hints.alignSelf() != null ? hints.alignSelf() : crossAxis;
+
+        Objc.sendVoid(view, Objc.sel("addArrangedSubview:"), subview);
+
+        if (effective == Alignment.STRETCH) {
+            addCrossAxisStretchConstraint(view, subview, vertical, padding);
+        }
+
+        if (hints.expand()) {
+            // Lower hugging priority along the main axis below the default
+            // (250) so NSStackViewDistributionFill routes slack to this child.
+            // NSLayoutConstraintOrientation: 0 = horizontal (width hugging),
+            // 1 = vertical (height hugging). Main axis = stack orientation.
+            long mainAxisOrientation = vertical ? 1L : 0L;
+            setContentHuggingPriority(subview, 100, mainAxisOrientation);
+        }
     }
 
     /**
-     * Add {@code subview} as an arranged subview of {@code stack} and pin its
-     * cross-axis dimension (perpendicular to the stack's orientation) to the
-     * stack's same dimension minus 2× edge inset. This gives Column/Row
-     * "children fill the cross axis" semantics — without this constraint,
-     * NSStackView's alignment pins the leading/top edge but lets children
-     * collapse to intrinsic size, which would leave Splitter/Frame/Expander
-     * etc. far narrower than the stack itself.
-     *
-     * The constraint is installed at priority 999 (just below required) so
-     * widgets that explicitly set their content hugging priority to required
-     * (1000) on the cross axis — Switch, Spinner, etc. — can opt out and
-     * remain at their compact intrinsic width.
+     * Map an {@link Alignment} to the NSLayoutAttribute used by
+     * {@code NSStackView.setAlignment:} for positional cross-axis alignment.
+     * STRETCH maps to a leading-edge anchor because the actual stretching is
+     * applied per-child via {@link #addCrossAxisStretchConstraint}.
+     */
+    private static long stackAlignmentFor(boolean vertical, Alignment cross) {
+        if (vertical) {
+            return switch (cross) {
+                case STRETCH, START -> 5L; // NSLayoutAttributeLeading
+                case CENTER, BASELINE -> 9L; // NSLayoutAttributeCenterX
+                case END -> 6L; // NSLayoutAttributeTrailing
+            };
+        }
+        return switch (cross) {
+            case STRETCH, START -> 3L; // NSLayoutAttributeTop
+            case CENTER -> 10L; // NSLayoutAttributeCenterY
+            case END -> 4L; // NSLayoutAttributeBottom
+            case BASELINE -> 12L; // NSLayoutAttributeFirstBaseline
+        };
+    }
+
+    /**
+     * Convenience for internal peers (Expander etc.) that build their own
+     * NSStackViews and want the "STRETCH" behavior without going through the
+     * {@link ContainerPeer#append} path. Adds the subview and pins it
+     * cross-axis. Equivalent to the original {@code addArrangedFillingCrossAxis}.
      */
     static void addArrangedFillingCrossAxis(MemorySegment stack, MemorySegment subview,
                                             boolean stackIsVertical, int edgeInset) {
         Objc.sendVoid(stack, Objc.sel("addArrangedSubview:"), subview);
+        addCrossAxisStretchConstraint(stack, subview, stackIsVertical, edgeInset);
+    }
+
+    /**
+     * Pin the child's cross-axis dimension to the stack's same dimension
+     * (minus 2× edge inset). Priority 350 keeps the constraint sub-required
+     * so it doesn't propagate to NSWindow's fittingSize and lock the window
+     * width to the children's intrinsic widths.
+     *
+     * <p>KVC + NSNumber is used to set the priority because direct
+     * {@code setPriority:(float)} via FFM passes the float in the wrong
+     * register on Apple ARM64.
+     */
+    static void addCrossAxisStretchConstraint(MemorySegment stack, MemorySegment subview,
+                                              boolean stackIsVertical, int edgeInset) {
         String dim = stackIsVertical ? "widthAnchor" : "heightAnchor";
         MemorySegment childAnchor = Objc.sendPtr(subview, Objc.sel(dim));
         MemorySegment stackAnchor = Objc.sendPtr(stack, Objc.sel(dim));
@@ -118,11 +161,6 @@ final class MacosContainerPeer implements ContainerPeer {
                         stackAnchor, constant);
             }
         } catch (Throwable t) { throw new RuntimeException(t); }
-        // Set priority below required so the constraint doesn't propagate as
-        // a hard requirement up to NSWindow's fittingSize, which would lock
-        // the window's content width to the children's intrinsic widths.
-        // Use KVC + NSNumber to set priority — direct setPriority:(float) via
-        // FFM passes the float in the wrong register on Apple ARM64.
         setPriorityViaKVC(c, 350);
         Objc.sendVoidBool(c, Objc.sel("setActive:"), true);
     }
@@ -140,8 +178,9 @@ final class MacosContainerPeer implements ContainerPeer {
 
     /**
      * Pin a view's content hugging priority along {@code orientation}
-     * (0=horizontal, 1=vertical) to the given priority. Higher priorities
-     * resist growing beyond intrinsic content size.
+     * (0=horizontal, 1=vertical). Higher priorities resist growing beyond
+     * intrinsic content size; lower priorities make the view absorb slack
+     * preferentially under NSStackViewDistributionFill.
      */
     static void setContentHuggingPriority(MemorySegment view, int priority, long orientation) {
         try {
@@ -176,6 +215,7 @@ final class MacosContainerPeer implements ContainerPeer {
             case MacosTabsPeer tp -> tp.view();
             case MacosSplitterPeer spl -> spl.view();
             case MacosExpanderPeer ex -> ex.view();
+            case MacosGridPeer gp -> gp.view();
             case MacosTreePeer tr -> tr.view();
             case MacosImagePeer im -> im.view();
             case MacosCanvasPeer cv -> cv.view();

@@ -108,6 +108,8 @@ final class Gtk {
         bind("gtk_button_new_with_label", FunctionDescriptor.of(PTR, PTR));
     private static final MethodHandle GTK_BUTTON_SET_LABEL =
         bind("gtk_button_set_label", FunctionDescriptor.ofVoid(PTR, PTR));
+    private static final MethodHandle GTK_BUTTON_GET_CHILD =
+        bind("gtk_button_get_child", FunctionDescriptor.of(PTR, PTR));
 
     private static final MethodHandle GTK_MENU_BUTTON_NEW =
         bind("gtk_menu_button_new", FunctionDescriptor.of(PTR));
@@ -124,6 +126,8 @@ final class Gtk {
         bind("gtk_label_set_text", FunctionDescriptor.ofVoid(PTR, PTR));
     private static final MethodHandle GTK_LABEL_GET_TEXT =
         bind("gtk_label_get_text", FunctionDescriptor.of(PTR, PTR));
+    private static final MethodHandle GTK_LABEL_SET_ATTRIBUTES =
+        bind("gtk_label_set_attributes", FunctionDescriptor.ofVoid(PTR, PTR));
 
     private static final MethodHandle GTK_ENTRY_NEW =
         bind("gtk_entry_new", FunctionDescriptor.of(PTR));
@@ -137,6 +141,19 @@ final class Gtk {
     private static final MethodHandle GTK_BOX_APPEND =
         bind("gtk_box_append", FunctionDescriptor.ofVoid(PTR, PTR));
 
+    private static final MethodHandle GTK_GRID_NEW =
+        bind("gtk_grid_new", FunctionDescriptor.of(PTR));
+    private static final MethodHandle GTK_GRID_ATTACH =
+        bind("gtk_grid_attach", FunctionDescriptor.ofVoid(PTR, PTR, INT, INT, INT, INT));
+    private static final MethodHandle GTK_GRID_SET_COLUMN_SPACING =
+        bind("gtk_grid_set_column_spacing", FunctionDescriptor.ofVoid(PTR, INT));
+    private static final MethodHandle GTK_GRID_SET_ROW_SPACING =
+        bind("gtk_grid_set_row_spacing", FunctionDescriptor.ofVoid(PTR, INT));
+    private static final MethodHandle GTK_GRID_SET_COLUMN_HOMOGENEOUS =
+        bind("gtk_grid_set_column_homogeneous", FunctionDescriptor.ofVoid(PTR, BOOL));
+    private static final MethodHandle GTK_GRID_SET_ROW_HOMOGENEOUS =
+        bind("gtk_grid_set_row_homogeneous", FunctionDescriptor.ofVoid(PTR, BOOL));
+
     private static final MethodHandle GTK_WIDGET_SET_MARGIN_TOP =
         bind("gtk_widget_set_margin_top", FunctionDescriptor.ofVoid(PTR, INT));
     private static final MethodHandle GTK_WIDGET_SET_MARGIN_BOTTOM =
@@ -145,6 +162,14 @@ final class Gtk {
         bind("gtk_widget_set_margin_start", FunctionDescriptor.ofVoid(PTR, INT));
     private static final MethodHandle GTK_WIDGET_SET_MARGIN_END =
         bind("gtk_widget_set_margin_end", FunctionDescriptor.ofVoid(PTR, INT));
+    private static final MethodHandle GTK_WIDGET_SET_HALIGN =
+        bind("gtk_widget_set_halign", FunctionDescriptor.ofVoid(PTR, INT));
+    private static final MethodHandle GTK_WIDGET_SET_VALIGN =
+        bind("gtk_widget_set_valign", FunctionDescriptor.ofVoid(PTR, INT));
+    private static final MethodHandle GTK_WIDGET_SET_HEXPAND =
+        bind("gtk_widget_set_hexpand", FunctionDescriptor.ofVoid(PTR, BOOL));
+    private static final MethodHandle GTK_WIDGET_SET_VEXPAND =
+        bind("gtk_widget_set_vexpand", FunctionDescriptor.ofVoid(PTR, BOOL));
     private static final MethodHandle GTK_WIDGET_UNPARENT =
         bind("gtk_widget_unparent", FunctionDescriptor.ofVoid(PTR));
     private static final MethodHandle GTK_WIDGET_INSERT_ACTION_GROUP =
@@ -544,6 +569,13 @@ final class Gtk {
         catch (Throwable t) { throw new RuntimeException(t); }
     }
 
+    /** Returns the button's child widget — for a label-style button created
+     *  via {@link #gtk_button_new_with_label}, this is the inner GtkLabel. */
+    static MemorySegment gtk_button_get_child(MemorySegment btn) {
+        try { return (MemorySegment) GTK_BUTTON_GET_CHILD.invoke(btn); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
     static MemorySegment gtk_label_new(String text) {
         try (var arena = Arena.ofConfined()) {
             return (MemorySegment) GTK_LABEL_NEW.invoke(arena.allocateFrom(text == null ? "" : text));
@@ -561,6 +593,11 @@ final class Gtk {
             MemorySegment cstr = (MemorySegment) GTK_LABEL_GET_TEXT.invoke(lbl);
             return readCString(cstr);
         } catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** {@code attrs} may be {@code MemorySegment.NULL} to clear. */
+    static void gtk_label_set_attributes(MemorySegment lbl, MemorySegment attrs) {
+        callPtrPtr(GTK_LABEL_SET_ATTRIBUTES, lbl, attrs);
     }
 
     static MemorySegment gtk_entry_new() {
@@ -590,10 +627,49 @@ final class Gtk {
         callPtrPtr(GTK_BOX_APPEND, box, child);
     }
 
+    static MemorySegment gtk_grid_new() {
+        try { return (MemorySegment) GTK_GRID_NEW.invoke(); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static void gtk_grid_attach(MemorySegment grid, MemorySegment child,
+                                int column, int row, int width, int height) {
+        try { GTK_GRID_ATTACH.invoke(grid, child, column, row, width, height); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static void gtk_grid_set_column_spacing(MemorySegment grid, int spacing) {
+        callPtrInt(GTK_GRID_SET_COLUMN_SPACING, grid, spacing);
+    }
+
+    static void gtk_grid_set_row_spacing(MemorySegment grid, int spacing) {
+        callPtrInt(GTK_GRID_SET_ROW_SPACING, grid, spacing);
+    }
+
+    static void gtk_grid_set_column_homogeneous(MemorySegment grid, boolean h) {
+        callPtrInt(GTK_GRID_SET_COLUMN_HOMOGENEOUS, grid, h ? 1 : 0);
+    }
+
+    static void gtk_grid_set_row_homogeneous(MemorySegment grid, boolean h) {
+        callPtrInt(GTK_GRID_SET_ROW_HOMOGENEOUS, grid, h ? 1 : 0);
+    }
+
     static void gtk_widget_set_margin_top(MemorySegment w, int m) { callPtrInt(GTK_WIDGET_SET_MARGIN_TOP, w, m); }
     static void gtk_widget_set_margin_bottom(MemorySegment w, int m) { callPtrInt(GTK_WIDGET_SET_MARGIN_BOTTOM, w, m); }
     static void gtk_widget_set_margin_start(MemorySegment w, int m) { callPtrInt(GTK_WIDGET_SET_MARGIN_START, w, m); }
     static void gtk_widget_set_margin_end(MemorySegment w, int m) { callPtrInt(GTK_WIDGET_SET_MARGIN_END, w, m); }
+
+    /** {@code GtkAlign} enum values. */
+    static final int GTK_ALIGN_FILL = 0;
+    static final int GTK_ALIGN_START = 1;
+    static final int GTK_ALIGN_END = 2;
+    static final int GTK_ALIGN_CENTER = 3;
+    static final int GTK_ALIGN_BASELINE = 4;
+
+    static void gtk_widget_set_halign(MemorySegment w, int align) { callPtrInt(GTK_WIDGET_SET_HALIGN, w, align); }
+    static void gtk_widget_set_valign(MemorySegment w, int align) { callPtrInt(GTK_WIDGET_SET_VALIGN, w, align); }
+    static void gtk_widget_set_hexpand(MemorySegment w, boolean expand) { callPtrInt(GTK_WIDGET_SET_HEXPAND, w, expand ? 1 : 0); }
+    static void gtk_widget_set_vexpand(MemorySegment w, boolean expand) { callPtrInt(GTK_WIDGET_SET_VEXPAND, w, expand ? 1 : 0); }
 
     static void gtk_widget_unparent(MemorySegment w) { callPtr(GTK_WIDGET_UNPARENT, w); }
 

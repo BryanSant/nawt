@@ -26,6 +26,10 @@ final class MacosButtonPeer implements ButtonPeer {
                     Delegates.BUTTON_ACTION_SEL);
             this.view = Objc.sendPtr(v, Objc.sel("retain"));
         } catch (Throwable t) { throw new RuntimeException(t); }
+
+        if (config.fontSize() > 0) {
+            applyFontSize(view, config.fontSize());
+        }
     }
 
     MemorySegment view() { return view; }
@@ -38,6 +42,38 @@ final class MacosButtonPeer implements ButtonPeer {
     @Override
     public void onClick(Runnable trigger) {
         Delegates.BUTTON_HANDLERS.put(target.address(), trigger);
+    }
+
+    @Override
+    public void setFontSize(int points) {
+        applyFontSize(view, points);
+    }
+
+    /** NSBezelStyleFlexiblePush (formerly NSBezelStyleRegularSquare) — the
+     *  bezel style whose intrinsic height tracks its title font. The default
+     *  bezel (NSBezelStylePush, value 1) is a fixed-height rounded button and
+     *  will let an enlarged font overflow vertically. */
+    private static final long NS_BEZEL_FLEXIBLE_PUSH = 2L;
+
+    /**
+     * Apply a system font of the given point size to {@code view}. When a
+     * non-default size is requested, also switch the bezel style so the
+     * button's intrinsic height grows to fit the new font.
+     * {@code points <= 0} restores the default system font and leaves the
+     * bezel style untouched.
+     */
+    private static void applyFontSize(MemorySegment view, int points) {
+        double size = points <= 0 ? 0.0 : (double) points;
+        MemorySegment font;
+        try {
+            font = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                    Objc.PTR, Objc.PTR, Objc.PTR, Objc.CGFLOAT))
+                .invoke(Objc.cls("NSFont"), Objc.sel("systemFontOfSize:"), size);
+        } catch (Throwable t) { throw new RuntimeException(t); }
+        if (points > 0) {
+            Objc.sendVoidLong(view, Objc.sel("setBezelStyle:"), NS_BEZEL_FLEXIBLE_PUSH);
+        }
+        Objc.sendVoid(view, Objc.sel("setFont:"), font);
     }
 
     @Override

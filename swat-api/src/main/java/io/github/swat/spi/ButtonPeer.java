@@ -9,4 +9,7 @@ public non-sealed interface ButtonPeer extends Peer {
      * for fanning out to user-supplied handlers (sync or virtual-thread).
      */
     void onClick(Runnable trigger);
+
+    /** Set title font point size; {@code 0} restores the platform default. */
+    void setFontSize(int points);
 }

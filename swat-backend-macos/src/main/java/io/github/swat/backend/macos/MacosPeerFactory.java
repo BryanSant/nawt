@@ -12,6 +12,8 @@ import io.github.swat.spi.ExpanderConfig;
 import io.github.swat.spi.ExpanderPeer;
 import io.github.swat.spi.FrameConfig;
 import io.github.swat.spi.FramePeer;
+import io.github.swat.spi.GridConfig;
+import io.github.swat.spi.GridPeer;
 import io.github.swat.spi.ScrollContainerConfig;
 import io.github.swat.spi.ScrollContainerPeer;
 import io.github.swat.spi.SplitterConfig;
@@ -97,6 +99,7 @@ public final class MacosPeerFactory implements PeerFactory {
     @Override public TabsPeer createTabs(TabsConfig cfg) { return new MacosTabsPeer(cfg); }
     @Override public SplitterPeer createSplitter(SplitterConfig cfg) { return new MacosSplitterPeer(cfg); }
     @Override public ExpanderPeer createExpander(ExpanderConfig cfg) { return new MacosExpanderPeer(cfg); }
+    @Override public GridPeer createGrid(GridConfig cfg) { return new MacosGridPeer(cfg); }
     @Override public TreePeer createTree(TreeConfig cfg) { return new MacosTreePeer(cfg); }
     @Override public ImagePeer createImage(ImageConfig cfg) { return new MacosImagePeer(cfg); }
     @Override public CanvasPeer createCanvas(CanvasConfig cfg) { return new MacosCanvasPeer(cfg); }

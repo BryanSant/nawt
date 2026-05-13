@@ -23,7 +23,7 @@ public sealed interface Peer extends AutoCloseable
             CheckboxPeer, SwitchPeer, RadioPeer,
             SliderPeer, ProgressBarPeer, SpinnerPeer,
             DropDownPeer,
-            FramePeer, ScrollContainerPeer, TabsPeer, SplitterPeer, ExpanderPeer,
+            FramePeer, ScrollContainerPeer, TabsPeer, SplitterPeer, ExpanderPeer, GridPeer,
             TreePeer, ImagePeer, CanvasPeer,
             HeaderBarPeer, SystemTrayPeer {
 

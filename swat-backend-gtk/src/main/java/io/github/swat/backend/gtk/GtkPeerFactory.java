@@ -12,6 +12,8 @@ import io.github.swat.spi.ExpanderConfig;
 import io.github.swat.spi.ExpanderPeer;
 import io.github.swat.spi.FrameConfig;
 import io.github.swat.spi.FramePeer;
+import io.github.swat.spi.GridConfig;
+import io.github.swat.spi.GridPeer;
 import io.github.swat.spi.ScrollContainerConfig;
 import io.github.swat.spi.ScrollContainerPeer;
 import io.github.swat.spi.SplitterConfig;
@@ -150,6 +152,7 @@ public final class GtkPeerFactory implements PeerFactory {
     @Override public TabsPeer createTabs(TabsConfig cfg) { return new GtkTabsPeer(cfg); }
     @Override public SplitterPeer createSplitter(SplitterConfig cfg) { return new GtkSplitterPeer(cfg); }
     @Override public ExpanderPeer createExpander(ExpanderConfig cfg) { return new GtkExpanderPeer(cfg); }
+    @Override public GridPeer createGrid(GridConfig cfg) { return new GtkGridPeer(cfg); }
     @Override public TreePeer createTree(TreeConfig cfg) { return new GtkTreePeer(cfg); }
     @Override public ImagePeer createImage(ImageConfig cfg) { return new GtkImagePeer(cfg); }
     @Override public CanvasPeer createCanvas(CanvasConfig cfg) { return new GtkCanvasPeer(cfg); }

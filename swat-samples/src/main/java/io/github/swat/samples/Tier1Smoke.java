@@ -7,6 +7,7 @@ import io.github.swat.Column;
 import io.github.swat.DropDown;
 import io.github.swat.Expander;
 import io.github.swat.Frame;
+import io.github.swat.Grid;
 import io.github.swat.HeaderBar;
 import io.github.swat.Image;
 import io.github.swat.Label;
@@ -23,6 +24,8 @@ import io.github.swat.TextField;
 import io.github.swat.Toolkit;
 import io.github.swat.Tree;
 import io.github.swat.Window;
+import io.github.swat.spi.Alignment;
+import io.github.swat.spi.ChildLayoutConfig;
 
 /**
  * Constructs every Tier 1 widget, opens a window, exercises a handful of setters,
@@ -76,9 +79,37 @@ public final class Tier1Smoke {
         field.dragText(() -> "dragged");
         label.acceptText(t -> { /* would receive */ });
 
+        // Layout API smoke: Row with an expanding child and a Column with a
+        // per-child cross-axis alignment override. Construction-only — no
+        // visual assertion, just makes sure the SPI path doesn't throw.
+        Row expandingRow = Row.builder()
+            .add(Label.of("L"))
+            .expand(TextField.of("middle"))
+            .add(Button.of("R"))
+            .build();
+        Column alignedColumn = Column.builder()
+            .alignCross(Alignment.START)
+            .add(Button.of("start"))
+            .add(Button.of("center"), ChildLayoutConfig.aligned(Alignment.CENTER))
+            .add(Button.of("end"), ChildLayoutConfig.aligned(Alignment.END))
+            .build();
+
+        // Grid smoke: 2 cols × 3 rows with one cell spanning both columns and
+        // one cell using alignSelf=CENTER. Construction-only.
+        Grid grid = Grid.builder()
+            .columnSpacing(8).rowSpacing(6)
+            .put(Label.of("Name"), 0, 0)
+            .put(TextField.of("ada"), 1, 0, ChildLayoutConfig.EXPAND)
+            .put(Label.of("Status"), 0, 1)
+            .put(DropDown.of("active", "inactive"), 1, 1,
+                ChildLayoutConfig.aligned(Alignment.CENTER))
+            .put(Button.of("Save"), 0, 2, 2, 1)
+            .build();
+
         Column content = Column.builder()
             .padding(8).spacing(8)
             .add(frame).add(split).add(exp)
+            .add(expandingRow).add(alignedColumn).add(grid)
             .build();
 
         HeaderBar header = HeaderBar.builder()

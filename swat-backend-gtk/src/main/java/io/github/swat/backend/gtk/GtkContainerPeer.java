@@ -1,5 +1,7 @@
 package io.github.swat.backend.gtk;
 
+import io.github.swat.spi.Alignment;
+import io.github.swat.spi.ChildLayoutConfig;
 import io.github.swat.spi.ContainerConfig;
 import io.github.swat.spi.ContainerPeer;
 import io.github.swat.spi.Orientation;
@@ -13,10 +15,13 @@ final class GtkContainerPeer implements ContainerPeer {
     private static final int GTK_ORIENTATION_VERTICAL = 1;
 
     private final MemorySegment widget;
+    private final boolean vertical;
+    private final Alignment crossAxis;
 
     GtkContainerPeer(ContainerConfig cfg) {
-        int orientation = cfg.orientation() == Orientation.VERTICAL
-            ? GTK_ORIENTATION_VERTICAL : GTK_ORIENTATION_HORIZONTAL;
+        this.vertical = cfg.orientation() == Orientation.VERTICAL;
+        this.crossAxis = cfg.crossAxis();
+        int orientation = vertical ? GTK_ORIENTATION_VERTICAL : GTK_ORIENTATION_HORIZONTAL;
         MemorySegment box = Gtk.gtk_box_new(orientation, cfg.spacing());
         if (cfg.padding() > 0) {
             int p = cfg.padding();
@@ -32,7 +37,50 @@ final class GtkContainerPeer implements ContainerPeer {
 
     @Override
     public void append(Peer child) {
-        Gtk.gtk_box_append(widget, peerWidget(child));
+        append(child, ChildLayoutConfig.DEFAULT);
+    }
+
+    @Override
+    public void append(Peer child, ChildLayoutConfig hints) {
+        MemorySegment childWidget = peerWidget(child);
+        Alignment effectiveAlign = hints.alignSelf() != null ? hints.alignSelf() : crossAxis;
+        applyCrossAxisAlignment(childWidget, effectiveAlign);
+        applyMainAxisExpand(childWidget, hints.expand());
+        Gtk.gtk_box_append(widget, childWidget);
+    }
+
+    /**
+     * Apply cross-axis alignment to the child. In a vertical box the cross
+     * axis is horizontal, so {@code halign} controls it; in a horizontal box
+     * the cross axis is vertical and {@code valign} controls it.
+     * BASELINE only applies on the cross axis of a horizontal Row.
+     */
+    private void applyCrossAxisAlignment(MemorySegment child, Alignment align) {
+        int gtkAlign = switch (align) {
+            case STRETCH -> Gtk.GTK_ALIGN_FILL;
+            case START -> Gtk.GTK_ALIGN_START;
+            case CENTER -> Gtk.GTK_ALIGN_CENTER;
+            case END -> Gtk.GTK_ALIGN_END;
+            case BASELINE -> vertical ? Gtk.GTK_ALIGN_CENTER : Gtk.GTK_ALIGN_BASELINE;
+        };
+        if (vertical) {
+            Gtk.gtk_widget_set_halign(child, gtkAlign);
+        } else {
+            Gtk.gtk_widget_set_valign(child, gtkAlign);
+        }
+    }
+
+    /**
+     * Mark the child as expanding along the main axis. GTK's expand flag
+     * splits available slack equally among expanding siblings — which matches
+     * the contract documented in LAYOUT.md (no per-child weight; equal split).
+     */
+    private void applyMainAxisExpand(MemorySegment child, boolean expand) {
+        if (vertical) {
+            Gtk.gtk_widget_set_vexpand(child, expand);
+        } else {
+            Gtk.gtk_widget_set_hexpand(child, expand);
+        }
     }
 
     @Override
@@ -57,6 +105,7 @@ final class GtkContainerPeer implements ContainerPeer {
             case GtkTabsPeer tp -> tp.widget();
             case GtkSplitterPeer spl -> spl.widget();
             case GtkExpanderPeer ex -> ex.widget();
+            case GtkGridPeer gp -> gp.widget();
             case GtkTreePeer tr -> tr.widget();
             case GtkImagePeer im -> im.widget();
             case GtkCanvasPeer cv -> cv.widget();

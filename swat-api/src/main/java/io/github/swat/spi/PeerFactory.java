@@ -64,6 +64,8 @@ public interface PeerFactory {
 
     ExpanderPeer createExpander(ExpanderConfig config);
 
+    GridPeer createGrid(GridConfig config);
+
     TreePeer createTree(TreeConfig config);
 
     ImagePeer createImage(ImageConfig config);

@@ -32,6 +32,12 @@ public final class Button implements Widget {
         return this;
     }
 
+    /** Set the button title's font point size. {@code 0} restores the platform default. */
+    public Button fontSize(int points) {
+        Ui.runOnUi(() -> peer.setFontSize(points));
+        return this;
+    }
+
     /** Register a click handler that runs on a fresh virtual thread. */
     public Button onClick(Consumer<ClickEvent> handler) {
         asyncListeners.add(handler);

@@ -1,5 +1,7 @@
 package io.github.swat;
 
+import io.github.swat.spi.Alignment;
+import io.github.swat.spi.ChildLayoutConfig;
 import io.github.swat.spi.ContainerConfig;
 import io.github.swat.spi.ContainerPeer;
 import io.github.swat.spi.Orientation;
@@ -40,24 +42,39 @@ public final class Row implements Container {
     public static final class Builder {
         private int spacing = 8;
         private int padding = 0;
+        private Alignment crossAxis = Alignment.STRETCH;
         private final java.util.List<Widget> kids = new java.util.ArrayList<>();
+        private final java.util.List<ChildLayoutConfig> hints = new java.util.ArrayList<>();
 
         private Builder() {}
 
         public Builder spacing(int px) { this.spacing = px; return this; }
         public Builder padding(int px) { this.padding = px; return this; }
-        public Builder add(Widget child) { kids.add(child); return this; }
+        public Builder alignCross(Alignment a) { this.crossAxis = a; return this; }
+
+        public Builder add(Widget child) {
+            kids.add(child); hints.add(ChildLayoutConfig.DEFAULT); return this;
+        }
+        public Builder add(Widget child, ChildLayoutConfig childHints) {
+            kids.add(child); hints.add(childHints == null ? ChildLayoutConfig.DEFAULT : childHints); return this;
+        }
+        public Builder expand(Widget child) {
+            return add(child, ChildLayoutConfig.EXPAND);
+        }
         public Builder children(Widget... ws) {
-            for (Widget w : ws) kids.add(w);
+            for (Widget w : ws) add(w);
             return this;
         }
 
         public Row build() {
             List<Widget> snapshot = List.copyOf(kids);
+            List<ChildLayoutConfig> hintSnapshot = List.copyOf(hints);
             return Ui.onUi(() -> {
                 ContainerPeer p = Toolkit.requireLaunched().peerFactory()
-                    .createContainer(new ContainerConfig(Orientation.HORIZONTAL, spacing, padding));
-                for (Widget w : snapshot) p.append(w.peer());
+                    .createContainer(new ContainerConfig(Orientation.HORIZONTAL, spacing, padding, crossAxis));
+                for (int i = 0; i < snapshot.size(); i++) {
+                    p.append(snapshot.get(i).peer(), hintSnapshot.get(i));
+                }
                 return new Row(p, snapshot);
             });
         }

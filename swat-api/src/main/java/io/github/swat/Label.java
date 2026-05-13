@@ -26,6 +26,20 @@ public final class Label implements Widget {
         return Ui.onUi(peer::getText);
     }
 
+    /** Set the label's font point size. {@code 0} restores the platform default. */
+    public Label fontSize(int points) {
+        Ui.runOnUi(() -> peer.setFontSize(points));
+        return this;
+    }
+
+    /** Render using the platform's monospaced system font. */
+    public Label monospace() { return monospace(true); }
+
+    public Label monospace(boolean on) {
+        Ui.runOnUi(() -> peer.setMonospace(on));
+        return this;
+    }
+
     @Override public Label tooltip(String text) { Widget.super.tooltip(text); return this; }
     @Override public Label dragText(java.util.function.Supplier<String> textProvider) { Widget.super.dragText(textProvider); return this; }
     @Override public Label acceptText(java.util.function.Consumer<String> textHandler) { Widget.super.acceptText(textHandler); return this; }

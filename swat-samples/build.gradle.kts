@@ -59,6 +59,15 @@ tasks.register<JavaExec>("tier1") {
     swatJvmArgs()
 }
 
+tasks.register<JavaExec>("calculator") {
+    group = "application"
+    description = "Run the Calculator sample — four-function calculator on a Grid."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainModule = "io.github.swat.samples"
+    mainClass = "io.github.swat.samples.Calculator"
+    swatJvmArgs()
+}
+
 tasks.register<JavaExec>("tier1Smoke") {
     group = "verification"
     description = "Non-interactive Tier 1 smoke test — constructs every widget, exercises setters, quits."

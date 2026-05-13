@@ -7,6 +7,7 @@ import io.github.swat.Column;
 import io.github.swat.DropDown;
 import io.github.swat.Expander;
 import io.github.swat.Frame;
+import io.github.swat.Grid;
 import io.github.swat.HeaderBar;
 import io.github.swat.Label;
 import io.github.swat.ProgressBar;
@@ -19,9 +20,12 @@ import io.github.swat.Splitter;
 import io.github.swat.Switch;
 import io.github.swat.Tabs;
 import io.github.swat.Toolkit;
+import io.github.swat.TextField;
 import io.github.swat.Tree;
 import io.github.swat.Ui;
 import io.github.swat.Window;
+import io.github.swat.spi.Alignment;
+import io.github.swat.spi.ChildLayoutConfig;
 
 /** Demonstrates every Tier 1 widget on a single window. */
 public final class Tier1Demo {
@@ -124,11 +128,62 @@ public final class Tier1Demo {
         Frame dndFrame = Frame.of("Drag and drop", Column.builder()
             .spacing(8).padding(12).add(dnd).build());
 
+        // Layout demo: a Row where the middle TextField absorbs window-resize
+        // slack (.expand) while the flanking Label and Button stay at intrinsic
+        // size; and a Column showing per-child cross-axis alignment.
+        TextField searchField = TextField.of("type to search…");
+        Row searchRow = Row.builder()
+            .spacing(8)
+            .add(Label.of("Search:"))
+            .expand(searchField)
+            .add(Button.of("Go")
+                .onClick(e -> Ui.invokeLater(() -> status.text("Searched: " + searchField.text()))))
+            .build();
+        Column alignDemo = Column.builder()
+            .spacing(6).padding(8)
+            .alignCross(Alignment.START)
+            .add(Button.of("Aligned START"))
+            .add(Button.of("Aligned CENTER"), ChildLayoutConfig.aligned(Alignment.CENTER))
+            .add(Button.of("Aligned END"), ChildLayoutConfig.aligned(Alignment.END))
+            .build();
+        Frame layoutFrame = Frame.of("Layout (expand + alignSelf)", Column.builder()
+            .spacing(8).padding(12)
+            .add(searchRow)
+            .add(alignDemo)
+            .build());
+
+        // Grid demo: a two-column form with a spanning footer button.
+        TextField gridName = TextField.of("Ada Lovelace");
+        TextField gridEmail = TextField.of("ada@example.com");
+        DropDown gridRole = DropDown.of("Owner", "Editor", "Viewer");
+        Button gridSave = Button.of("Save profile")
+            .onClick(e -> Ui.invokeLater(() -> {
+                int idx = gridRole.selectedIndex();
+                String role = idx >= 0 ? gridRole.items().get(idx) : "(none)";
+                status.text("Saved: " + gridName.text() + " · " + role);
+            }));
+        Grid grid = Grid.builder()
+            .columnSpacing(12).rowSpacing(8)
+            .put(Label.of("Name:"), 0, 0)
+            .put(gridName, 1, 0, ChildLayoutConfig.EXPAND)
+            .put(Label.of("Email:"), 0, 1)
+            .put(gridEmail, 1, 1, ChildLayoutConfig.EXPAND)
+            .put(Label.of("Role:"), 0, 2)
+            .put(gridRole, 1, 2, ChildLayoutConfig.aligned(Alignment.START))
+            .put(gridSave, 0, 3, 2, 1, ChildLayoutConfig.aligned(Alignment.END))
+            .build();
+        Frame gridFrame = Frame.of("Grid (form layout + span)", Column.builder()
+            .spacing(8).padding(12)
+            .add(grid)
+            .build());
+
         Column content = Column.builder()
             .spacing(12).padding(16)
             .add(status)
             .add(expander)
             .add(split)
+            .add(layoutFrame)
+            .add(gridFrame)
             .add(dndFrame)
             .add(services)
             .build();
