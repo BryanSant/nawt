@@ -70,6 +70,7 @@ public final class GtkPeerFactory implements PeerFactory {
             if (cachedCapabilities == null) {
                 java.util.List<io.github.swat.Capability> caps = new java.util.ArrayList<>();
                 caps.add(io.github.swat.Capability.HEADER_BAR);
+                caps.add(io.github.swat.Capability.HEADER_BAR_MENU);
                 caps.add(io.github.swat.Capability.TOAST_OVERLAY);
                 caps.add(io.github.swat.Capability.DRAG_TEXT);
                 if (probeStatusNotifierWatcher()) {

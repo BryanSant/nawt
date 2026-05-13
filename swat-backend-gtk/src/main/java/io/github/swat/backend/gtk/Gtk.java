@@ -109,6 +109,15 @@ final class Gtk {
     private static final MethodHandle GTK_BUTTON_SET_LABEL =
         bind("gtk_button_set_label", FunctionDescriptor.ofVoid(PTR, PTR));
 
+    private static final MethodHandle GTK_MENU_BUTTON_NEW =
+        bind("gtk_menu_button_new", FunctionDescriptor.of(PTR));
+    private static final MethodHandle GTK_MENU_BUTTON_SET_MENU_MODEL =
+        bind("gtk_menu_button_set_menu_model", FunctionDescriptor.ofVoid(PTR, PTR));
+    private static final MethodHandle GTK_MENU_BUTTON_SET_ICON_NAME =
+        bind("gtk_menu_button_set_icon_name", FunctionDescriptor.ofVoid(PTR, PTR));
+    private static final MethodHandle GTK_MENU_BUTTON_SET_PRIMARY =
+        bind("gtk_menu_button_set_primary", FunctionDescriptor.ofVoid(PTR, BOOL));
+
     private static final MethodHandle GTK_LABEL_NEW =
         bind("gtk_label_new", FunctionDescriptor.of(PTR, PTR));
     private static final MethodHandle GTK_LABEL_SET_TEXT =
@@ -356,7 +365,7 @@ final class Gtk {
         bind("gtk_paned_set_position", FunctionDescriptor.ofVoid(PTR, INT));
 
     private static final MethodHandle GTK_EXPANDER_NEW_WITH_LABEL =
-        bind("gtk_expander_new_with_label", FunctionDescriptor.of(PTR, PTR));
+        bind("gtk_expander_new", FunctionDescriptor.of(PTR, PTR));
     private static final MethodHandle GTK_EXPANDER_SET_LABEL =
         bind("gtk_expander_set_label", FunctionDescriptor.ofVoid(PTR, PTR));
     private static final MethodHandle GTK_EXPANDER_SET_CHILD =
@@ -512,6 +521,27 @@ final class Gtk {
         try (var arena = Arena.ofConfined()) {
             callPtrPtr(GTK_BUTTON_SET_LABEL, btn, arena.allocateFrom(label));
         }
+    }
+
+    static MemorySegment gtk_menu_button_new() {
+        try { return (MemorySegment) GTK_MENU_BUTTON_NEW.invoke(); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static void gtk_menu_button_set_menu_model(MemorySegment btn, MemorySegment model) {
+        try { GTK_MENU_BUTTON_SET_MENU_MODEL.invoke(btn, model); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static void gtk_menu_button_set_icon_name(MemorySegment btn, String iconName) {
+        try (var arena = Arena.ofConfined()) {
+            GTK_MENU_BUTTON_SET_ICON_NAME.invoke(btn, arena.allocateFrom(iconName));
+        } catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static void gtk_menu_button_set_primary(MemorySegment btn, boolean primary) {
+        try { GTK_MENU_BUTTON_SET_PRIMARY.invoke(btn, primary ? 1 : 0); }
+        catch (Throwable t) { throw new RuntimeException(t); }
     }
 
     static MemorySegment gtk_label_new(String text) {

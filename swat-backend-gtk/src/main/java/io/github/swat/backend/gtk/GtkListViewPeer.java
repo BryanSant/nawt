@@ -4,7 +4,6 @@ import io.github.swat.spi.ListViewConfig;
 import io.github.swat.spi.ListViewPeer;
 
 import java.lang.foreign.MemorySegment;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntConsumer;
 
@@ -22,7 +21,6 @@ final class GtkListViewPeer implements ListViewPeer {
 
     private final MemorySegment scrolled;     // GtkScrolledWindow*, retained — exposed as the view
     private final MemorySegment listBox;      // GtkListBox*, retained
-    private final List<MemorySegment> rowWidgets = new ArrayList<>();
     private List<String> items;
     private volatile IntConsumer trigger;
 
@@ -52,16 +50,16 @@ final class GtkListViewPeer implements ListViewPeer {
     MemorySegment widget() { return scrolled; }
 
     private void rebuildRows() {
-        // Remove existing rows
-        for (MemorySegment row : rowWidgets) {
+        // gtk_list_box_append wraps the child in an auto-generated GtkListBoxRow,
+        // so the row — not the label — is the list box's direct child. Drain by
+        // index until empty rather than tracking labels (which aren't children).
+        MemorySegment row;
+        while ((row = Gtk.gtk_list_box_get_row_at_index(listBox, 0)) != null && row.address() != 0) {
             Gtk.gtk_list_box_remove(listBox, row);
         }
-        rowWidgets.clear();
-        // Append new rows as GtkLabel widgets
         for (String item : items) {
             MemorySegment label = Gtk.gtk_label_new(item == null ? "" : item);
             Gtk.gtk_list_box_append(listBox, label);
-            rowWidgets.add(label);
         }
     }
 
@@ -104,8 +102,10 @@ final class GtkListViewPeer implements ListViewPeer {
 
     @Override
     public void close() {
-        for (MemorySegment row : rowWidgets) Gtk.gtk_list_box_remove(listBox, row);
-        rowWidgets.clear();
+        MemorySegment row;
+        while ((row = Gtk.gtk_list_box_get_row_at_index(listBox, 0)) != null && row.address() != 0) {
+            Gtk.gtk_list_box_remove(listBox, row);
+        }
         Gtk.g_object_unref(scrolled);
         Gtk.g_object_unref(listBox);
     }

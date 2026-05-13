@@ -21,6 +21,20 @@ final class GtkHeaderBarPeer implements HeaderBarPeer {
         this.widget = Gtk.g_object_ref(hb);
         for (Peer p : cfg.startItems()) addStart(p);
         for (Peer p : cfg.endItems()) addEnd(p);
+        // Pack the burger menu last so it sits at the trailing edge, just
+        // inside the window-control close button (Adwaita convention).
+        if (cfg.menu() instanceof GtkMenuPeer gm) {
+            MemorySegment btn = Gtk.gtk_menu_button_new();
+            Gtk.gtk_menu_button_set_icon_name(btn, "open-menu-symbolic");
+            Gtk.gtk_menu_button_set_menu_model(btn, gm.gmenu());
+            Gtk.gtk_menu_button_set_primary(btn, true);
+            // Resolve action references (e.g. "swat.act_3") to the global
+            // GtkActions group so menu items fire their Java callbacks.
+            Gtk.gtk_widget_insert_action_group(btn, GtkActions.PREFIX, GtkActions.group());
+            Adw.adw_header_bar_pack_end(widget, btn);
+        } else if (cfg.menu() != null) {
+            throw new IllegalArgumentException("Foreign MenuPeer: " + cfg.menu().getClass());
+        }
     }
 
     MemorySegment widget() { return widget; }

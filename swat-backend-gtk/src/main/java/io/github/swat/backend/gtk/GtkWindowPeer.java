@@ -105,9 +105,11 @@ final class GtkWindowPeer implements WindowPeer {
     }
 
     /**
-     * Detach all currently-mounted top bars and re-attach in canonical order:
-     * menu first (top of the stack), then header. {@code add_top_bar} appends,
-     * so the order of calls determines the visual top-to-bottom order.
+     * Detach all currently-mounted top bars and re-attach in canonical Adwaita
+     * order: header first (window-titlebar position — gets the lighter
+     * background, centered title widget, and proper window-control styling),
+     * then menu beneath it. {@code add_top_bar} appends, so the order of
+     * calls determines the visual top-to-bottom order.
      */
     private void mountTopBars() {
         if (mountedMenu != null) {
@@ -118,13 +120,13 @@ final class GtkWindowPeer implements WindowPeer {
             Adw.adw_toolbar_view_remove(toolbarView, mountedHeader);
             mountedHeader = null;
         }
-        if (menuBarChild != null) {
-            Adw.adw_toolbar_view_add_top_bar(toolbarView, menuBarChild);
-            mountedMenu = menuBarChild;
-        }
         if (currentHeader != null) {
             Adw.adw_toolbar_view_add_top_bar(toolbarView, currentHeader);
             mountedHeader = currentHeader;
+        }
+        if (menuBarChild != null) {
+            Adw.adw_toolbar_view_add_top_bar(toolbarView, menuBarChild);
+            mountedMenu = menuBarChild;
         }
     }
 

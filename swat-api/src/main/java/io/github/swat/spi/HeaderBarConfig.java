@@ -9,9 +9,13 @@ import java.util.List;
  * Window's title is used (NSToolbar unified style on macOS,
  * {@code AdwWindowTitle} fallback on Adwaita).
  */
-public record HeaderBarConfig(List<Peer> startItems, List<Peer> endItems) {
+public record HeaderBarConfig(List<Peer> startItems, List<Peer> endItems, MenuPeer menu) {
     public HeaderBarConfig {
         startItems = startItems == null ? List.of() : List.copyOf(startItems);
         endItems = endItems == null ? List.of() : List.copyOf(endItems);
+    }
+
+    public HeaderBarConfig(List<Peer> startItems, List<Peer> endItems) {
+        this(startItems, endItems, null);
     }
 }

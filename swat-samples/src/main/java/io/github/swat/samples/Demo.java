@@ -1,7 +1,9 @@
 package io.github.swat.samples;
 
 import io.github.swat.Button;
+import io.github.swat.Capability;
 import io.github.swat.Column;
+import io.github.swat.HeaderBar;
 import io.github.swat.Label;
 import io.github.swat.ListView;
 import io.github.swat.Toolkit;
@@ -79,32 +81,61 @@ public final class Demo {
             .add(io.github.swat.Row.of(pickFile, pickFolder))
             .build();
 
-        MenuBar menuBar = MenuBar.of(
-            Menu.builder("File")
-                .action("New",  e -> Ui.invokeLater(() -> status.text("File → New clicked.")))
-                .action("Open", e -> Ui.invokeLater(() -> status.text("File → Open clicked.")))
-                .add(MenuSeparator.of())
-                .action("Close window", e -> Ui.invokeLater(Toolkit::shutdown))
-                .build(),
-            Menu.builder("Help")
-                .action("About SWAT", e -> {
-                    MessageDialog.builder()
-                        .style(MessageDialog.Style.INFO)
-                        .title("About SWAT")
-                        .message("A spiritual successor to AWT/SWT.")
-                        .details("Built on Java 25, FFM, and virtual threads.")
-                        .buttons("Close")
-                        .show();
-                })
-                .build()
-        );
+        // Same set of "primary" commands, placed where the host platform expects
+        // them: in the Adwaita header bar's burger menu on GTK, or as a top-level
+        // menu in the system menu bar on macOS (where header-bar menus aren't an
+        // idiom). HEADER_BAR_MENU gates the platform-appropriate path.
+        Menu.Builder fileMenu = Menu.builder("File")
+            .action("New",  e -> Ui.invokeLater(() -> status.text("File → New clicked.")))
+            .action("Open", e -> Ui.invokeLater(() -> status.text("File → Open clicked.")))
+            .add(MenuSeparator.of())
+            .action("Close window", e -> Ui.invokeLater(Toolkit::shutdown));
 
-        Window.builder()
-            .title("SWAT Demo")
+        Menu.Builder helpMenu = Menu.builder("Help")
+            .action("About SWAT", e -> showAbout());
+
+        boolean burgerMenuSupported = Toolkit.supports(Capability.HEADER_BAR_MENU);
+
+        Window.Builder windowBuilder = Window.builder()
+            .title("Demo")
             .size(420, 360)
-            .menuBar(menuBar)
-            .content(content)
-            .build()
+            .content(content);
+
+        if (burgerMenuSupported) {
+            // Header-bar burger menu carries the "primary" command set.
+            Menu burger = Menu.builder("")
+                .action("Option 1", e -> Ui.invokeLater(() -> status.text("Option 1")))
+                .action("Option 2", e -> Ui.invokeLater(() -> status.text("Option 2")))
+                .action("Option 3", e -> Ui.invokeLater(() -> status.text("Option 3")))
+                .separator()
+                .action("About", e -> showAbout())
+                .build();
+            windowBuilder
+                .menuBar(MenuBar.of(fileMenu.build(), helpMenu.build()))
+                .headerBar(HeaderBar.builder().menu(burger).build());
+        } else {
+            // No burger-menu idiom on this platform — surface the same items as
+            // a top-level "Demo" menu in the global/window menu bar.
+            Menu demoMenu = Menu.builder("Demo")
+                .action("Option 1", e -> Ui.invokeLater(() -> status.text("Option 1")))
+                .action("Option 2", e -> Ui.invokeLater(() -> status.text("Option 2")))
+                .action("Option 3", e -> Ui.invokeLater(() -> status.text("Option 3")))
+                .separator()
+                .action("About", e -> showAbout())
+                .build();
+            windowBuilder.menuBar(MenuBar.of(fileMenu.build(), demoMenu, helpMenu.build()));
+        }
+
+        windowBuilder.build().show();
+    }
+
+    private static void showAbout() {
+        MessageDialog.builder()
+            .style(MessageDialog.Style.INFO)
+            .title("About SWAT")
+            .message("A spiritual successor to AWT/SWT.")
+            .details("Built on Java 25, FFM, and virtual threads.")
+            .buttons("Close")
             .show();
     }
 }

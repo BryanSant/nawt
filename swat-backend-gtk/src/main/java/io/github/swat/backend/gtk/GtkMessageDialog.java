@@ -28,8 +28,7 @@ final class GtkMessageDialog {
 
     private static final AtomicLong NEXT_TOKEN = new AtomicLong(1);
 
-    private record Pending(MemorySegment dialog, CompletableFuture<Integer> future,
-                           int buttonCount, int defaultIdx) {}
+    private record Pending(CompletableFuture<Integer> future, int buttonCount, int defaultIdx) {}
     private static final ConcurrentHashMap<Long, Pending> IN_FLIGHT = new ConcurrentHashMap<>();
 
     /** GAsyncReadyCallback signature: {@code void(GObject*, GAsyncResult*, gpointer)}. */
@@ -71,7 +70,7 @@ final class GtkMessageDialog {
             Adw.adw_alert_dialog_set_close_response(dialog, defaultId);
 
             long token = NEXT_TOKEN.getAndIncrement();
-            IN_FLIGHT.put(token, new Pending(dialog, future, buttons.size(), cfg.defaultButtonIndex()));
+            IN_FLIGHT.put(token, new Pending(future, buttons.size(), cfg.defaultButtonIndex()));
 
             Adw.adw_alert_dialog_choose(
                 dialog,
@@ -103,12 +102,9 @@ final class GtkMessageDialog {
             pending.future().complete(idx);
         } catch (Throwable t) {
             pending.future().completeExceptionally(t);
-        } finally {
-            // adw_alert_dialog_new returns a fresh ref; release it now that
-            // the dialog has been dismissed.
-            try { Gtk.g_object_unref(pending.dialog()); }
-            catch (Throwable ignored) {}
         }
+        // adw_alert_dialog_new returns a floating ref that adw_alert_dialog_choose
+        // sinks into the parent window. We never owned a ref, so we don't unref.
     }
 
     private static int parseResponseId(MemorySegment cstr, int buttonCount, int defaultIdx) {

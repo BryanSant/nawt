@@ -16,6 +16,13 @@ public enum Capability {
      *  {@code AdwHeaderBar} on Linux. */
     HEADER_BAR,
 
+    /** Primary "burger" menu rendered inside the header bar (the open-menu-symbolic
+     *  {@code GtkMenuButton} pattern used by every modern Adwaita app). Backends
+     *  without this idiom — notably macOS, where secondary commands belong in
+     *  the global menu bar — leave it unset; samples should fall back to adding
+     *  the same commands as a top-level {@code MenuBar} entry. */
+    HEADER_BAR_MENU,
+
     /** Transient in-window toast messages — custom overlay on macOS,
      *  {@code AdwToastOverlay} on Linux. */
     TOAST_OVERLAY,

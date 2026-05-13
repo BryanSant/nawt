@@ -309,11 +309,11 @@ final class GtkTreePeer implements TreePeer {
 
     @Override public void close() {
         TREES.remove(token);
+        // gtk_column_view_new, gtk_single_selection_new, and gtk_tree_list_model_new
+        // are all (transfer full) on their model arguments — selection, treeListModel,
+        // and rootStore are now owned by the column view's reference chain. We only
+        // unref what we explicitly ref'd in the constructor (scrolled, columnView).
         Gtk.g_object_unref(scrolled);
         Gtk.g_object_unref(columnView);
-        Gtk.g_object_unref(selection);
-        // selection owns treeListModel and rootStore via its model ref chain;
-        // the explicit unrefs above match the explicit g_object_ref calls we
-        // performed in the constructor for scrolled and columnView.
     }
 }
