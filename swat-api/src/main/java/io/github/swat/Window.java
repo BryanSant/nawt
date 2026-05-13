@@ -122,6 +122,7 @@ public final class Window implements Container {
         private String title = "";
         private int width = 640;
         private int height = 480;
+        private boolean resizable = true;
         private Widget content;
         private MenuBar menuBar;
         private HeaderBar headerBar;
@@ -130,6 +131,8 @@ public final class Window implements Container {
 
         public Builder title(String title) { this.title = title; return this; }
         public Builder size(int w, int h) { this.width = w; this.height = h; return this; }
+        /** Whether the user can resize the window. Default {@code true}. */
+        public Builder resizable(boolean resizable) { this.resizable = resizable; return this; }
         public Builder content(Widget content) { this.content = content; return this; }
         public Builder menuBar(MenuBar menuBar) { this.menuBar = menuBar; return this; }
         public Builder headerBar(HeaderBar headerBar) { this.headerBar = headerBar; return this; }
@@ -137,7 +140,7 @@ public final class Window implements Container {
         public Window build() {
             return Ui.onUi(() -> {
                 WindowPeer p = Toolkit.requireLaunched().peerFactory()
-                    .createWindow(new WindowConfig(title, width, height));
+                    .createWindow(new WindowConfig(title, width, height, resizable));
                 // Set header bar before content so the chrome is in place when
                 // the content view is resolved against the window's frame.
                 if (headerBar != null) p.setHeaderBar(headerBar.peer());

@@ -7,10 +7,17 @@ import io.github.swat.spi.GridPeer;
 import io.github.swat.spi.Peer;
 
 import java.lang.foreign.MemorySegment;
+import java.util.ArrayList;
+import java.util.List;
 
 final class GtkGridPeer implements GridPeer {
 
     private final MemorySegment widget;
+    private final boolean squareCells;
+    private boolean squareApplied;
+    private final List<Cell> cells = new ArrayList<>();
+
+    private record Cell(MemorySegment widget, int colSpan, int rowSpan) {}
 
     GtkGridPeer(GridConfig cfg) {
         MemorySegment g = Gtk.gtk_grid_new();
@@ -22,6 +29,43 @@ final class GtkGridPeer implements GridPeer {
         // grid as needed. We carry them in GridConfig for backends like
         // NSGridView that need explicit dimensions up front.
         this.widget = Gtk.g_object_ref(g);
+        this.squareCells = cfg.squareCells();
+        if (squareCells) {
+            // Square cells need to know each child's natural sizes, which are
+            // only computable once the widget tree is realized (the grid has
+            // been attached to a window and added to the layout). Defer the
+            // measure-and-size-request pass to "realize".
+            GtkSignals.connectVoid(widget, "realize", this::applySquareCells);
+        }
+    }
+
+    /**
+     * Compute the per-cell square dimension and stamp it onto each non-spanning
+     * child as a size-request. For each cell we take its natural width and
+     * height normalized by its span (so the display Label in the calculator —
+     * 4 cols × 1 row — contributes naturalWidth/4 and naturalHeight); cellDim
+     * is the max across all those normalized values. Spanning children are
+     * left unsized — the grid's homogeneous flags grow them to N×cellDim
+     * automatically. Runs once, on first realize.
+     */
+    private void applySquareCells() {
+        if (squareApplied) return;
+        squareApplied = true;
+        int cellDim = 0;
+        for (Cell c : cells) {
+            int natW = Gtk.gtk_widget_natural_size(c.widget(), Gtk.GTK_ORIENTATION_HORIZONTAL);
+            int natH = Gtk.gtk_widget_natural_size(c.widget(), Gtk.GTK_ORIENTATION_VERTICAL);
+            int perW = (natW + c.colSpan() - 1) / c.colSpan(); // ceil-div
+            int perH = (natH + c.rowSpan() - 1) / c.rowSpan();
+            if (perW > cellDim) cellDim = perW;
+            if (perH > cellDim) cellDim = perH;
+        }
+        if (cellDim <= 0) return;
+        for (Cell c : cells) {
+            if (c.colSpan() == 1 && c.rowSpan() == 1) {
+                Gtk.gtk_widget_set_size_request(c.widget(), cellDim, cellDim);
+            }
+        }
     }
 
     MemorySegment widget() { return widget; }
@@ -45,6 +89,7 @@ final class GtkGridPeer implements GridPeer {
         }
 
         Gtk.gtk_grid_attach(widget, childWidget, column, row, columnSpan, rowSpan);
+        if (squareCells) cells.add(new Cell(childWidget, columnSpan, rowSpan));
     }
 
     private static int toGtkAlign(Alignment a) {

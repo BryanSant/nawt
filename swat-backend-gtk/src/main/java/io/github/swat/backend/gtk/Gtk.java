@@ -99,6 +99,8 @@ final class Gtk {
         bind("gtk_window_set_title", FunctionDescriptor.ofVoid(PTR, PTR));
     private static final MethodHandle GTK_WINDOW_SET_DEFAULT_SIZE =
         bind("gtk_window_set_default_size", FunctionDescriptor.ofVoid(PTR, INT, INT));
+    private static final MethodHandle GTK_WINDOW_SET_RESIZABLE =
+        bind("gtk_window_set_resizable", FunctionDescriptor.ofVoid(PTR, BOOL));
     private static final MethodHandle GTK_WINDOW_SET_CHILD =
         bind("gtk_window_set_child", FunctionDescriptor.ofVoid(PTR, PTR));
     private static final MethodHandle GTK_WINDOW_PRESENT =
@@ -174,6 +176,15 @@ final class Gtk {
         bind("gtk_widget_set_vexpand", FunctionDescriptor.ofVoid(PTR, BOOL));
     private static final MethodHandle GTK_WIDGET_UNPARENT =
         bind("gtk_widget_unparent", FunctionDescriptor.ofVoid(PTR));
+    private static final MethodHandle GTK_WIDGET_SET_SIZE_REQUEST =
+        bind("gtk_widget_set_size_request", FunctionDescriptor.ofVoid(PTR, INT, INT));
+    private static final MethodHandle GTK_WIDGET_MEASURE =
+        bind("gtk_widget_measure",
+            FunctionDescriptor.ofVoid(PTR, INT, INT, PTR, PTR, PTR, PTR));
+    private static final MethodHandle GTK_WIDGET_GET_FIRST_CHILD =
+        bind("gtk_widget_get_first_child", FunctionDescriptor.of(PTR, PTR));
+    private static final MethodHandle GTK_WIDGET_GET_NEXT_SIBLING =
+        bind("gtk_widget_get_next_sibling", FunctionDescriptor.of(PTR, PTR));
     private static final MethodHandle GTK_WIDGET_INSERT_ACTION_GROUP =
         bind("gtk_widget_insert_action_group", FunctionDescriptor.ofVoid(PTR, PTR, PTR));
     private static final MethodHandle GTK_WIDGET_SET_TOOLTIP_TEXT =
@@ -538,6 +549,11 @@ final class Gtk {
         catch (Throwable t) { throw new RuntimeException(t); }
     }
 
+    static void gtk_window_set_resizable(MemorySegment win, boolean resizable) {
+        try { GTK_WINDOW_SET_RESIZABLE.invoke(win, resizable ? 1 : 0); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
     static void gtk_window_set_child(MemorySegment win, MemorySegment child) {
         callPtrPtr(GTK_WINDOW_SET_CHILD, win, child);
     }
@@ -676,10 +692,41 @@ final class Gtk {
     static final int GTK_ALIGN_CENTER = 3;
     static final int GTK_ALIGN_BASELINE = 4;
 
+    /** {@code GtkOrientation} enum values. */
+    static final int GTK_ORIENTATION_HORIZONTAL = 0;
+    static final int GTK_ORIENTATION_VERTICAL = 1;
+
     static void gtk_widget_set_halign(MemorySegment w, int align) { callPtrInt(GTK_WIDGET_SET_HALIGN, w, align); }
     static void gtk_widget_set_valign(MemorySegment w, int align) { callPtrInt(GTK_WIDGET_SET_VALIGN, w, align); }
     static void gtk_widget_set_hexpand(MemorySegment w, boolean expand) { callPtrInt(GTK_WIDGET_SET_HEXPAND, w, expand ? 1 : 0); }
     static void gtk_widget_set_vexpand(MemorySegment w, boolean expand) { callPtrInt(GTK_WIDGET_SET_VEXPAND, w, expand ? 1 : 0); }
+
+    static void gtk_widget_set_size_request(MemorySegment w, int width, int height) {
+        try { GTK_WIDGET_SET_SIZE_REQUEST.invoke(w, width, height); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static MemorySegment gtk_widget_get_first_child(MemorySegment w) {
+        try { return (MemorySegment) GTK_WIDGET_GET_FIRST_CHILD.invoke(w); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    static MemorySegment gtk_widget_get_next_sibling(MemorySegment w) {
+        try { return (MemorySegment) GTK_WIDGET_GET_NEXT_SIBLING.invoke(w); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** Natural size of {@code w} along {@code orientation} (GTK_ORIENTATION_*). */
+    static int gtk_widget_natural_size(MemorySegment w, int orientation) {
+        try (var arena = Arena.ofConfined()) {
+            MemorySegment min = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment nat = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment minBl = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment natBl = arena.allocate(ValueLayout.JAVA_INT);
+            GTK_WIDGET_MEASURE.invoke(w, orientation, -1, min, nat, minBl, natBl);
+            return nat.get(ValueLayout.JAVA_INT, 0);
+        } catch (Throwable t) { throw new RuntimeException(t); }
+    }
 
     static void gtk_widget_unparent(MemorySegment w) { callPtr(GTK_WIDGET_UNPARENT, w); }
 

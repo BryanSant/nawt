@@ -82,13 +82,14 @@ public final class Calculator {
         Window.builder()
             .title("Calculator")
             .size(360, 480)
+            .resizable(false)
             .content(content)
             .build()
             .show();
     }
 
     /** Uniform font size for every key in the keypad. */
-    private static final int KEY_FONT_SIZE = 26;
+    private static final int KEY_FONT_SIZE = 21;
 
     private static Widget digit(String d, State state, Label display) {
         return Button.of(d).fontSize(KEY_FONT_SIZE).onClickSync(e -> {

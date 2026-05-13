@@ -19,7 +19,8 @@ final class MacosWindowPeer implements WindowPeer {
     //   NSWindowStyleMaskClosable       = 1 << 1
     //   NSWindowStyleMaskMiniaturizable = 1 << 2
     //   NSWindowStyleMaskResizable      = 1 << 3
-    private static final long DEFAULT_STYLE_MASK = (1L) | (1L << 1) | (1L << 2) | (1L << 3);
+    private static final long STYLE_MASK_BASE = (1L) | (1L << 1) | (1L << 2);
+    private static final long STYLE_MASK_RESIZABLE = (1L << 3);
 
     // NSBackingStoreBuffered = 2
     private static final long NS_BACKING_BUFFERED = 2L;
@@ -57,12 +58,13 @@ final class MacosWindowPeer implements WindowPeer {
             FunctionDescriptor initFd = FunctionDescriptor.of(
                 Objc.PTR, Objc.PTR, Objc.PTR,
                 NSRECT, Objc.NSUINT, Objc.NSUINT, Objc.BOOL);
+            long styleMask = STYLE_MASK_BASE | (cfg.resizable() ? STYLE_MASK_RESIZABLE : 0L);
             MemorySegment w;
             try {
                 w = (MemorySegment) Objc.msgSend(initFd).invoke(
                     alloc,
                     Objc.sel("initWithContentRect:styleMask:backing:defer:"),
-                    rect, DEFAULT_STYLE_MASK, NS_BACKING_BUFFERED, false);
+                    rect, styleMask, NS_BACKING_BUFFERED, false);
             } catch (Throwable t) { throw new RuntimeException(t); }
             this.window = w; // alloc+init returns a +1 retain — already owned
         }
