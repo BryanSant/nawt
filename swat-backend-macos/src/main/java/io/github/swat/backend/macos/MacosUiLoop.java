@@ -51,6 +51,13 @@ final class MacosUiLoop implements UiLoop {
             // [NSApp setActivationPolicy: NSApplicationActivationPolicyRegular(0)]
             Objc.sendVoidLong(nsApp, Objc.sel("setActivationPolicy:"), 0L);
 
+            // Install a default main menu before -finishLaunching so the app
+            // menu (About <name> · separator · Quit <name>) is in place when
+            // macOS first lays out the menu bar. A later
+            // Window.builder().menuBar(...) replaces this with the user's menu.
+            MacosMenuBarPeer defaultBar = new MacosMenuBarPeer();
+            Objc.sendVoid(nsApp, Objc.sel("setMainMenu:"), defaultBar.nsMenu());
+
             // [NSApp finishLaunching]
             Objc.sendVoid(nsApp, Objc.sel("finishLaunching"));
 

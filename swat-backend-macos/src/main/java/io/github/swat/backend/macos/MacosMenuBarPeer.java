@@ -28,11 +28,44 @@ final class MacosMenuBarPeer implements MenuBarPeer {
     MemorySegment nsMenu() { return mainMenu; }
 
     private void installAppMenu() {
-        // App menu: title is replaced by the app name automatically by macOS
+        // App menu: title is replaced by the app name automatically by macOS.
         MemorySegment appMenu = Objc.sendPtr(
             Objc.send_alloc(Objc.cls("NSMenu")), Objc.sel("initWithTitle:"), NSString.from("App"));
+        // Without this, AppKit auto-disables items whose target/action it
+        // can't validate, including our custom swatAppAbout: action.
+        Objc.sendVoidBool(appMenu, Objc.sel("setAutoenablesItems:"), false);
 
-        // Quit Cmd+Q → [NSApp terminate:nil]
+        // Fetch the current process name (set by Toolkit.launch's appName via
+        // -[NSProcessInfo setProcessName:]). Used to build "About <name>" /
+        // "Quit <name>" labels — matches Cocoa convention.
+        MemorySegment processInfo = Objc.sendPtr(Objc.cls("NSProcessInfo"), Objc.sel("processInfo"));
+        MemorySegment nsName = Objc.sendPtr(processInfo, Objc.sel("processName"));
+        String appName = NSString.toJava(nsName);
+        if (appName == null || appName.isEmpty()) appName = "Application";
+
+        // About <name> → swatAppAbout: on a shared SwatAppAboutTarget.
+        MemorySegment aboutTarget = Objc.sendPtr(Delegates.newAppAboutTarget(), Objc.sel("retain"));
+        MemorySegment aboutAlloc = Objc.send_alloc(Objc.cls("NSMenuItem"));
+        MemorySegment aboutItem;
+        try {
+            aboutItem = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR))
+                .invoke(
+                    aboutAlloc,
+                    Objc.sel("initWithTitle:action:keyEquivalent:"),
+                    NSString.from("About " + appName),
+                    Delegates.APP_ABOUT_ACTION_SEL,
+                    NSString.from(""));
+        } catch (Throwable t) { throw new RuntimeException(t); }
+        Objc.sendVoid(aboutItem, Objc.sel("setTarget:"), aboutTarget);
+        Objc.sendVoid(appMenu, Objc.sel("addItem:"), aboutItem);
+        Objc.sendVoid(aboutItem, Objc.sel("release"));
+
+        // Separator (NSMenuItem.separatorItem is an autoreleased shared item).
+        MemorySegment separator = Objc.sendPtr(Objc.cls("NSMenuItem"), Objc.sel("separatorItem"));
+        Objc.sendVoid(appMenu, Objc.sel("addItem:"), separator);
+
+        // Quit <name> Cmd+Q → [NSApp terminate:nil] via responder chain.
         MemorySegment quitAlloc = Objc.send_alloc(Objc.cls("NSMenuItem"));
         MemorySegment quitItem;
         try {
@@ -41,15 +74,14 @@ final class MacosMenuBarPeer implements MenuBarPeer {
                 .invoke(
                     quitAlloc,
                     Objc.sel("initWithTitle:action:keyEquivalent:"),
-                    NSString.from("Quit"),
+                    NSString.from("Quit " + appName),
                     Objc.sel("terminate:"),
                     NSString.from("q"));
         } catch (Throwable t) { throw new RuntimeException(t); }
-        // target = nil → NSApp uses responder chain → NSApplication handles terminate:
         Objc.sendVoid(appMenu, Objc.sel("addItem:"), quitItem);
         Objc.sendVoid(quitItem, Objc.sel("release"));
 
-        // Wrap appMenu as a top-level item on mainMenu
+        // Wrap appMenu as a top-level item on mainMenu.
         MemorySegment hostAlloc = Objc.send_alloc(Objc.cls("NSMenuItem"));
         MemorySegment host;
         try {

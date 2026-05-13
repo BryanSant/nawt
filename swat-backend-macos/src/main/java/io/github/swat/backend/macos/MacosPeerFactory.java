@@ -65,6 +65,14 @@ public final class MacosPeerFactory implements PeerFactory {
     @Override public String platformId() { return "macos"; }
 
     @Override
+    public void setAboutHandler(Runnable handler) {
+        // The app menu is installed at MacosUiLoop.bootstrap time and the
+        // About item already targets Delegates.APP_ABOUT_HANDLER via a
+        // shared delegate, so all we need to do here is swap the handler.
+        Delegates.APP_ABOUT_HANDLER = handler;
+    }
+
+    @Override
     public void setApplicationName(String name) {
         if (name == null) return;
         try (var pool = AutoreleasePool.push()) {

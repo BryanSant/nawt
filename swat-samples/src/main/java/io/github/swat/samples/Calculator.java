@@ -7,6 +7,7 @@ import io.github.swat.Label;
 import io.github.swat.Toolkit;
 import io.github.swat.Widget;
 import io.github.swat.Window;
+import io.github.swat.dialog.MessageDialog;
 import io.github.swat.spi.Alignment;
 import io.github.swat.spi.ChildLayoutConfig;
 
@@ -30,6 +31,8 @@ public final class Calculator {
     }
 
     private static void buildUi() {
+        Toolkit.onAbout(Calculator::showAbout);
+
         State state = new State();
         Label display = Label.of(state.display()).fontSize(48).monospace();
 
@@ -90,6 +93,17 @@ public final class Calculator {
 
     /** Uniform font size for every key in the keypad. */
     private static final int KEY_FONT_SIZE = 21;
+
+    private static void showAbout() {
+        MessageDialog.builder()
+            .style(MessageDialog.Style.INFO)
+            .title("About SWATCalc")
+            .message("SWATCalc")
+            .details("A four-function calculator demonstrating SWAT's Grid layout. "
+                + "Built with the SWAT toolkit (https://github.com/BryanSant/swat).")
+            .buttons("OK")
+            .show();
+    }
 
     private static Widget digit(String d, State state, Label display) {
         return Button.of(d).fontSize(KEY_FONT_SIZE).onClickSync(e -> {

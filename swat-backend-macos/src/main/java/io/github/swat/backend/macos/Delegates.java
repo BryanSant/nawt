@@ -40,6 +40,15 @@ final class Delegates {
     static final MemorySegment MENU_ACTION_SEL = Objc.sel("swatMenuClick:");
     static final ConcurrentHashMap<Long, Runnable> MENU_HANDLERS = new ConcurrentHashMap<>();
 
+    /* ---------- App-menu About target ----------
+     * The app menu's About item is wired to a single shared target; replacing
+     * the handler is a volatile assignment so {@code Toolkit.onAbout(...)}
+     * applies retroactively to an already-installed menu. */
+
+    static final MemorySegment APP_ABOUT_TARGET_CLASS;
+    static final MemorySegment APP_ABOUT_ACTION_SEL = Objc.sel("swatAppAbout:");
+    static volatile Runnable APP_ABOUT_HANDLER;
+
     /* ---------- Table view data source/delegate ---------- */
 
     static final MemorySegment TABLE_DATASOURCE_CLASS;
@@ -93,6 +102,7 @@ final class Delegates {
         WINDOW_DELEGATE_CLASS = registerWindowDelegateClass();
         TEXTFIELD_DELEGATE_CLASS = registerTextFieldDelegateClass();
         MENU_TARGET_CLASS = registerMenuTargetClass();
+        APP_ABOUT_TARGET_CLASS = registerAppAboutTargetClass();
         TABLE_DATASOURCE_CLASS = registerTableDataSourceClass();
         TOGGLE_TARGET_CLASS = registerToggleTargetClass();
         TABS_DELEGATE_CLASS = registerTabsDelegateClass();
@@ -137,6 +147,10 @@ final class Delegates {
 
     static MemorySegment newMenuTarget() {
         return Objc.sendPtr(Objc.send_alloc(MENU_TARGET_CLASS), Objc.sel("init"));
+    }
+
+    static MemorySegment newAppAboutTarget() {
+        return Objc.sendPtr(Objc.send_alloc(APP_ABOUT_TARGET_CLASS), Objc.sel("init"));
     }
 
     static MemorySegment newTableDataSource() {
@@ -274,6 +288,45 @@ final class Delegates {
             try { r.run(); }
             catch (Throwable t) { t.printStackTrace(); }
         }
+    }
+
+    /* ---------- App-menu About target ---------- */
+
+    private static MemorySegment registerAppAboutTargetClass() {
+        MemorySegment cls = Objc.allocateClassPair(Objc.cls("NSObject"), "SwatAppAboutTarget");
+        try {
+            MethodHandle mh = MethodHandles.lookup().findStatic(
+                Delegates.class, "appAboutClick",
+                MethodType.methodType(void.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
+            MemorySegment imp = Linker.nativeLinker().upcallStub(
+                mh,
+                FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, Objc.PTR),
+                Objc.GLOBAL);
+            Objc.addMethod(cls, APP_ABOUT_ACTION_SEL, imp, "v@:@");
+            Objc.registerClassPair(cls);
+            return cls;
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /** Invoked from AppKit when the About menu item is picked. Runs the
+     *  current {@link #APP_ABOUT_HANDLER} on a fresh virtual thread so
+     *  blocking UI calls like {@code MessageDialog.show()} are allowed,
+     *  mirroring how button {@code onClick} handlers dispatch. Falls back
+     *  to the standard system About panel when no handler is registered. */
+    @SuppressWarnings("unused")
+    private static void appAboutClick(MemorySegment self, MemorySegment cmd, MemorySegment sender) {
+        Runnable r = APP_ABOUT_HANDLER;
+        if (r != null) {
+            Thread.startVirtualThread(() -> {
+                try { r.run(); }
+                catch (Throwable t) { t.printStackTrace(); }
+            });
+            return;
+        }
+        MemorySegment app = Objc.sendPtr(Objc.cls("NSApplication"), Objc.sel("sharedApplication"));
+        Objc.sendVoid(app, Objc.sel("orderFrontStandardAboutPanel:"), Objc.NIL);
     }
 
     /* ---------- Table data source/delegate (combined into one class) ---------- */

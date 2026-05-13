@@ -113,6 +113,17 @@ public final class Toolkit {
         Ui.runOnUi(() -> requireLaunched().peerFactory.setApplicationName(name));
     }
 
+    /**
+     * Register a handler for the standard "About" application command. On
+     * macOS this populates the {@code About <name>} item in the app menu;
+     * picking it runs {@code handler} on the UI thread. Pass {@code null} to
+     * restore the platform default. May be called any time after
+     * {@link #launch(String, Runnable)}.
+     */
+    public static void onAbout(Runnable handler) {
+        Ui.runOnUi(() -> requireLaunched().peerFactory.setAboutHandler(handler));
+    }
+
     /** Request orderly shutdown. Safe to call from any thread. */
     public static void shutdown() {
         Toolkit t = CURRENT.get();

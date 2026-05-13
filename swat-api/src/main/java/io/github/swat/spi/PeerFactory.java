@@ -21,6 +21,15 @@ public interface PeerFactory {
     default void setApplicationName(String name) {}
 
     /**
+     * Register a handler invoked when the user picks the standard "About"
+     * application command (the {@code About <name>} item in the macOS app
+     * menu; the Adwaita primary-menu equivalent on GTK once that lands).
+     * {@code null} restores the platform default (system About panel on
+     * macOS). Default no-op for backends that haven't wired this yet.
+     */
+    default void setAboutHandler(Runnable handler) {}
+
+    /**
      * Platform-meaningful capabilities this backend supports. Default empty —
      * backends override to declare what they opt into. Callers query via
      * {@code Toolkit.supports(Capability)}.
