@@ -72,6 +72,8 @@ final class Gtk {
         bind("g_signal_connect_data", FunctionDescriptor.of(LONG, PTR, PTR, PTR, PTR, PTR, INT));
     private static final MethodHandle G_FREE =
         bind("g_free", FunctionDescriptor.ofVoid(PTR));
+    private static final MethodHandle G_SET_APPLICATION_NAME =
+        bind("g_set_application_name", FunctionDescriptor.ofVoid(PTR));
 
     /* ---------- GIO / clipboard / launcher (resolved lazily; may be in same lib path) ---------- */
 
@@ -503,6 +505,14 @@ final class Gtk {
     }
 
     static void g_object_unref(MemorySegment obj) { callPtr(G_OBJECT_UNREF, obj); }
+
+    /** Set the GLib application name, used by notifications, accessibility,
+     *  and various window-manager hints. */
+    static void g_set_application_name(String name) {
+        try (var arena = Arena.ofConfined()) {
+            G_SET_APPLICATION_NAME.invoke(arena.allocateFrom(name));
+        } catch (Throwable t) { throw new RuntimeException(t); }
+    }
 
     static long g_signal_connect_data(MemorySegment instance, String signal, MemorySegment callback,
                                       MemorySegment data, MemorySegment destroy, int flags) {

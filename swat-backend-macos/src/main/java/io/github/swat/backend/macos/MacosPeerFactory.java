@@ -64,6 +64,38 @@ public final class MacosPeerFactory implements PeerFactory {
 
     @Override public String platformId() { return "macos"; }
 
+    @Override
+    public void setApplicationName(String name) {
+        if (name == null) return;
+        try (var pool = AutoreleasePool.push()) {
+            // Updates `top`/`ps` and -[NSProcessInfo processName].
+            MemorySegment processInfo = Objc.sendPtr(Objc.cls("NSProcessInfo"), Objc.sel("processInfo"));
+            Objc.sendVoid(processInfo, Objc.sel("setProcessName:"), NSString.from(name));
+
+            // Drive the bold app-menu title by poking CFBundleName into the
+            // main bundle's info dictionary, exactly as OpenJDK's launcher
+            // does for -Xdock:name=. For a non-bundled process the info
+            // dictionary is an internal NSMutableDictionary, so
+            // -[NSMutableDictionary setObject:forKey:] works. Must run
+            // before NSApp.sharedApplication caches localizedName.
+            MemorySegment bundle = Objc.sendPtr(Objc.cls("NSBundle"), Objc.sel("mainBundle"));
+            MemorySegment infoDict = Objc.sendPtr(bundle, Objc.sel("infoDictionary"));
+            if (infoDict != null && infoDict.address() != 0) {
+                MemorySegment key = NSString.from("CFBundleName");
+                MemorySegment value = NSString.from(name);
+                try {
+                    Objc.msgSend(java.lang.foreign.FunctionDescriptor.ofVoid(
+                            Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR))
+                        .invoke(infoDict, Objc.sel("setObject:forKey:"), value, key);
+                } catch (Throwable ignored) {
+                    // If the info dictionary is genuinely immutable (an
+                    // already-bundled app), silently skip — the bundle's
+                    // CFBundleName from Info.plist wins anyway.
+                }
+            }
+        }
+    }
+
     @Override public io.github.swat.spi.Capabilities capabilities() {
         return io.github.swat.spi.Capabilities.of(
             io.github.swat.Capability.HEADER_BAR,

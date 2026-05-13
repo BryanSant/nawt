@@ -70,7 +70,24 @@ public final class Toolkit {
      * called from the JVM's main thread on macOS — NSApplication requires it.
      */
     public static void launch(Runnable appMain) {
+        launch(null, appMain);
+    }
+
+    /**
+     * Launch the toolkit with an application name set before the host
+     * materializes its menu bar / process metadata. On macOS, {@code appName}
+     * becomes the bold title in the application menu and the value returned
+     * by {@code -[NSProcessInfo processName]} (visible in {@code top}/{@code ps}).
+     * On GTK it becomes the GLib application name used for notifications and
+     * window-manager hints.
+     *
+     * <p>Must be called from the JVM main thread on macOS (same constraint
+     * as {@link #launch(Runnable)}). Pass {@code null} for {@code appName}
+     * to inherit the platform default.
+     */
+    public static void launch(String appName, Runnable appMain) {
         PeerFactory pf = detect();
+        if (appName != null) pf.setApplicationName(appName);
         UiLoop loop = pf.createUiLoop();
         Toolkit t = new Toolkit(pf, loop);
         if (!CURRENT.compareAndSet(null, t)) {
@@ -86,6 +103,14 @@ public final class Toolkit {
         });
         app.start();
         loop.run();
+    }
+
+    /**
+     * Update the application name after launch. On macOS the app-menu title
+     * refreshes on the next event-loop iteration.
+     */
+    public static void setApplicationName(String name) {
+        Ui.runOnUi(() -> requireLaunched().peerFactory.setApplicationName(name));
     }
 
     /** Request orderly shutdown. Safe to call from any thread. */

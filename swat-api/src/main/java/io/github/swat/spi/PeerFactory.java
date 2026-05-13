@@ -13,6 +13,14 @@ public interface PeerFactory {
     String platformId();
 
     /**
+     * Set the application name as shown by the host (macOS application menu's
+     * bold title, GTK process / notification name, etc.). Best called before
+     * the first window is shown, but most backends accept dynamic updates.
+     * Default no-op for backends that don't have a concept of an app name.
+     */
+    default void setApplicationName(String name) {}
+
+    /**
      * Platform-meaningful capabilities this backend supports. Default empty —
      * backends override to declare what they opt into. Callers query via
      * {@code Toolkit.supports(Capability)}.

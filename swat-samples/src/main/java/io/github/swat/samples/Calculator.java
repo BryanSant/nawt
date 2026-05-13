@@ -26,7 +26,7 @@ public final class Calculator {
     private Calculator() {}
 
     public static void main(String[] args) {
-        Toolkit.launch(Calculator::buildUi);
+        Toolkit.launch("SWATCalc", Calculator::buildUi);
     }
 
     private static void buildUi() {

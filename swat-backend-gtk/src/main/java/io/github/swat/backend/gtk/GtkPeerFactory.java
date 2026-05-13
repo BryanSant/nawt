@@ -63,6 +63,12 @@ public final class GtkPeerFactory implements PeerFactory {
 
     @Override public String platformId() { return "gtk"; }
 
+    @Override
+    public void setApplicationName(String name) {
+        if (name == null) return;
+        Gtk.g_set_application_name(name);
+    }
+
     private volatile io.github.swat.spi.Capabilities cachedCapabilities;
 
     @Override public io.github.swat.spi.Capabilities capabilities() {
