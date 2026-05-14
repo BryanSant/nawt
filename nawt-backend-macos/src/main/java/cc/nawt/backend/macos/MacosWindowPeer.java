@@ -122,10 +122,17 @@ final class MacosWindowPeer implements WindowPeer {
         // toolbar item when the window has an NSToolbar, etc.).
         if (content instanceof MacosNavigationSplitPeer ns) {
             Objc.sendVoid(window, Objc.sel("setContentViewController:"), ns.viewController());
+            // setContentViewController: makes the window adopt the
+            // controller's preferredContentSize (small default for a fresh
+            // NSSplitViewController). Re-apply the size the caller
+            // configured via .size(w, h) — same idiom as the non-controller
+            // setContentView path below.
             if (fitContent) {
                 MemorySegment cv = Objc.sendPtr(window, Objc.sel("contentView"));
                 applyFittingSize(cv);
                 Objc.sendVoid(window, Objc.sel("center"));
+            } else {
+                applyConfiguredSize();
             }
             return;
         }

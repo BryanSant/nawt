@@ -26,7 +26,8 @@ public sealed interface Peer extends AutoCloseable
             FramePeer, ScrollContainerPeer, TabsPeer, SplitterPeer, ExpanderPeer, GridPeer,
             TreePeer, ImagePeer, CanvasPeer,
             HeaderBarPeer, SystemTrayPeer,
-            SidebarPeer, NavigationSplitPeer {
+            SidebarPeer, NavigationSplitPeer, MapPeer,
+            OverlayPeer, DividerPeer {
 
     @Override
     void close();

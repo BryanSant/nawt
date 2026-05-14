@@ -89,8 +89,39 @@ final class MacosNavigationSplitPeer implements NavigationSplitPeer {
     private static MemorySegment newViewControllerHosting(MemorySegment hostedView) {
         MemorySegment vc = Objc.sendPtr(
             Objc.send_alloc(Objc.cls("NSViewController")), Objc.sel("init"));
-        Objc.sendVoid(vc, Objc.sel("setView:"), hostedView);
+
+        // Wrap the application's view in an autoresize-mask container so that
+        // NSSplitViewController's traditional frame-based sizing reaches it.
+        // Pinning our Auto-Layout view to fill that container lets the inner
+        // NSStackView's constraint solver receive proper bounds — without
+        // this wrapping, children get collapsed sizes despite required-priority
+        // size constraints.
+        MemorySegment container = Objc.sendPtr(
+            Objc.send_alloc(Objc.cls("NSView")), Objc.sel("init"));
+        Objc.sendVoidBool(container, Objc.sel("setTranslatesAutoresizingMaskIntoConstraints:"), true);
+        // NSViewWidthSizable = 2, NSViewHeightSizable = 16
+        Objc.sendVoidLong(container, Objc.sel("setAutoresizingMask:"), 2L | 16L);
+
+        Objc.sendVoid(container, Objc.sel("addSubview:"), hostedView);
+        pinEqual(hostedView, "leadingAnchor",  container, "leadingAnchor");
+        pinEqual(hostedView, "trailingAnchor", container, "trailingAnchor");
+        pinEqual(hostedView, "topAnchor",      container, "topAnchor");
+        pinEqual(hostedView, "bottomAnchor",   container, "bottomAnchor");
+
+        Objc.sendVoid(vc, Objc.sel("setView:"), container);
         return Objc.sendPtr(vc, Objc.sel("retain"));
+    }
+
+    private static void pinEqual(MemorySegment a, String aAnchor, MemorySegment b, String bAnchor) {
+        MemorySegment anchorA = Objc.sendPtr(a, Objc.sel(aAnchor));
+        MemorySegment anchorB = Objc.sendPtr(b, Objc.sel(bAnchor));
+        MemorySegment c;
+        try {
+            c = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                    Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR))
+                .invoke(anchorA, Objc.sel("constraintEqualToAnchor:"), anchorB);
+        } catch (Throwable t) { throw new RuntimeException(t); }
+        Objc.sendVoidBool(c, Objc.sel("setActive:"), true);
     }
 
     private static void applyCgFloat(MemorySegment target, MemorySegment sel, double value) {
@@ -102,23 +133,43 @@ final class MacosNavigationSplitPeer implements NavigationSplitPeer {
 
     @Override
     public void setSidebar(Peer sidebar) {
-        // Rare path — sidebar is fixed at construction in practice. Implemented
-        // for SPI completeness: swap the sidebar item's view controller's view.
         if (sidebar == null) return;
-        MemorySegment newView = MacosContainerPeer.peerView(sidebar);
-        Objc.sendVoid(sidebarItemVC, Objc.sel("setView:"), newView);
+        replaceHostedView(sidebarItemVC, MacosContainerPeer.peerView(sidebar));
     }
 
     @Override
     public void setDetail(Peer detail) {
-        if (detail == null) {
-            return;
+        if (detail == null) return;
+        replaceHostedView(detailItemVC, MacosContainerPeer.peerView(detail));
+    }
+
+    /**
+     * Swap the application view inside the controller's autoresize-mask
+     * container (set up by {@link #newViewControllerHosting}). Keeps the
+     * controller's outer view stable so split-view-controller layout state
+     * (divider position, sidebar collapse state) survives the swap.
+     */
+    private static void replaceHostedView(MemorySegment vc, MemorySegment newHostedView) {
+        MemorySegment container = Objc.sendPtr(vc, Objc.sel("view"));
+        // Remove every existing subview (typically just the previous hosted view).
+        MemorySegment subviews = Objc.sendPtr(container, Objc.sel("subviews"));
+        long count = Objc.sendLong(subviews, Objc.sel("count"));
+        for (long i = 0; i < count; i++) {
+            MemorySegment sv;
+            try {
+                sv = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                        Objc.PTR, Objc.PTR, Objc.PTR, Objc.NSUINT))
+                    .invoke(subviews, Objc.sel("objectAtIndex:"), 0L);
+            } catch (Throwable t) { throw new RuntimeException(t); }
+            // Re-fetch index 0 each iteration since removeFromSuperview shifts indices.
+            Objc.sendVoid(sv, Objc.sel("removeFromSuperview"));
+            subviews = Objc.sendPtr(container, Objc.sel("subviews"));
         }
-        MemorySegment newView = MacosContainerPeer.peerView(detail);
-        // Swap the existing detail VC's view rather than replacing the
-        // NSSplitViewItem itself — AppKit handles re-layout automatically and
-        // we keep the split divider position stable across detail swaps.
-        Objc.sendVoid(detailItemVC, Objc.sel("setView:"), newView);
+        Objc.sendVoid(container, Objc.sel("addSubview:"), newHostedView);
+        pinEqual(newHostedView, "leadingAnchor",  container, "leadingAnchor");
+        pinEqual(newHostedView, "trailingAnchor", container, "trailingAnchor");
+        pinEqual(newHostedView, "topAnchor",      container, "topAnchor");
+        pinEqual(newHostedView, "bottomAnchor",   container, "bottomAnchor");
     }
 
     @Override

@@ -68,6 +68,31 @@ tasks.register<JavaExec>("calculator") {
     nawtJvmArgs()
 }
 
+tasks.register<JavaExec>("landmarks") {
+    group = "application"
+    description = "Run the Landmarks sample — Apple's macOS Landmarks tutorial ported to NAWT."
+    // Resources live in build/resources/main while classes (incl. module-info)
+    // live in build/classes/java/main; with mainModule set, Gradle would put
+    // them on different paths and the module's getResourceAsStream couldn't
+    // see the resources. Routing through the JAR collapses both into one
+    // module-path entry so classloader-based resource lookup works.
+    dependsOn(tasks.named("jar"))
+    classpath = files(tasks.named<Jar>("jar").get().archiveFile)
+        .plus(configurations.runtimeClasspath.get())
+    mainModule = "cc.nawt.samples"
+    mainClass = "cc.nawt.samples.landmarks.Landmarks"
+    nawtJvmArgs()
+}
+
+tasks.register<JavaExec>("mapSanity") {
+    group = "verification"
+    description = "Open an interactive MapKit map centred on Yosemite — sanity check for the Map widget."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainModule = "cc.nawt.samples"
+    mainClass = "cc.nawt.samples.MapSanity"
+    nawtJvmArgs()
+}
+
 tasks.register<JavaExec>("tier1Smoke") {
     group = "verification"
     description = "Non-interactive Tier 1 smoke test — constructs every widget, exercises setters, quits."

@@ -114,7 +114,8 @@ public final class MacosPeerFactory implements PeerFactory {
             cc.nawt.Capability.IMAGE_CLIP,
             cc.nawt.Capability.SYSTEM_ICONS,
             cc.nawt.Capability.SIDEBAR,
-            cc.nawt.Capability.NAVIGATION_SPLIT);
+            cc.nawt.Capability.NAVIGATION_SPLIT,
+            cc.nawt.Capability.MAP);
     }
 
     @Override
@@ -149,6 +150,9 @@ public final class MacosPeerFactory implements PeerFactory {
     @Override public CanvasPeer createCanvas(CanvasConfig cfg) { return new MacosCanvasPeer(cfg); }
     @Override public cc.nawt.spi.SidebarPeer createSidebar(cc.nawt.spi.SidebarConfig cfg) { return new MacosSidebarPeer(cfg); }
     @Override public cc.nawt.spi.NavigationSplitPeer createNavigationSplit(cc.nawt.spi.NavigationSplitConfig cfg) { return new MacosNavigationSplitPeer(cfg); }
+    @Override public cc.nawt.spi.MapPeer createMap(cc.nawt.spi.MapConfig cfg) { return new MacosMapPeer(cfg); }
+    @Override public cc.nawt.spi.OverlayPeer createOverlay(cc.nawt.spi.OverlayConfig cfg) { return new MacosOverlayPeer(cfg); }
+    @Override public cc.nawt.spi.DividerPeer createDivider(cc.nawt.spi.DividerConfig cfg) { return new MacosDividerPeer(cfg); }
     @Override public cc.nawt.spi.HeaderBarPeer createHeaderBar(cc.nawt.spi.HeaderBarConfig cfg) {
         return new MacosHeaderBarPeer(cfg);
     }

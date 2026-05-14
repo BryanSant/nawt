@@ -40,6 +40,14 @@ public final class Label implements Widget {
         return this;
     }
 
+    /** Shorthand for {@code style(LabelStyle.SECONDARY)} — secondary/subtitle text. */
+    public Label secondary() { return style(LabelStyle.SECONDARY); }
+
+    public Label style(LabelStyle style) {
+        Ui.runOnUi(() -> peer.setStyle(style));
+        return this;
+    }
+
     @Override public Label tooltip(String text) { Widget.super.tooltip(text); return this; }
     @Override public Label dragText(java.util.function.Supplier<String> textProvider) { Widget.super.dragText(textProvider); return this; }
     @Override public Label acceptText(java.util.function.Consumer<String> textHandler) { Widget.super.acceptText(textHandler); return this; }

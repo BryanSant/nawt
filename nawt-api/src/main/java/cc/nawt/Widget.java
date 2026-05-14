@@ -11,7 +11,7 @@ public sealed interface Widget extends AutoCloseable
             Checkbox, Switch, Radio,
             Slider, ProgressBar, Spinner,
             DropDown, Tree, Image, Canvas,
-            Sidebar {
+            Sidebar, Map, Divider {
 
     /**
      * Escape hatch: the underlying native peer.

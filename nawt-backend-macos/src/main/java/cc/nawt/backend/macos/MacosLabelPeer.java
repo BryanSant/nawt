@@ -1,5 +1,6 @@
 package cc.nawt.backend.macos;
 
+import cc.nawt.LabelStyle;
 import cc.nawt.spi.LabelConfig;
 import cc.nawt.spi.LabelPeer;
 
@@ -26,6 +27,7 @@ final class MacosLabelPeer implements LabelPeer {
         this.currentSize = config.fontSize();
         this.currentMonospace = config.monospace();
         if (currentSize > 0 || currentMonospace) applyFont();
+        if (config.style() != LabelStyle.PRIMARY) setStyle(config.style());
     }
 
     MemorySegment view() { return view; }
@@ -77,6 +79,18 @@ final class MacosLabelPeer implements LabelPeer {
             }
         } catch (Throwable t) { throw new RuntimeException(t); }
         Objc.sendVoid(view, Objc.sel("setFont:"), font);
+    }
+
+    @Override
+    public void setStyle(LabelStyle style) {
+        // NSColor class selector resolves to a semantic colour that tracks the
+        // system appearance (light/dark mode). +labelColor / +secondaryLabelColor
+        // are the canonical body/caption pair.
+        String selectorName = (style == LabelStyle.SECONDARY)
+            ? "secondaryLabelColor"
+            : "labelColor";
+        MemorySegment color = Objc.sendPtr(Objc.cls("NSColor"), Objc.sel(selectorName));
+        Objc.sendVoid(view, Objc.sel("setTextColor:"), color);
     }
 
     @Override

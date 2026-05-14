@@ -72,6 +72,19 @@ public final class Image implements Widget {
         return this;
     }
 
+    /**
+     * Constrain the image's rendered size to {@code (width, height)} points.
+     * Both must be {@code >= 0}; pass {@code 0} on either axis to release the
+     * constraint and let the host's intrinsic-size logic decide.
+     */
+    public Image size(int width, int height) {
+        if (width < 0 || height < 0) {
+            throw new IllegalArgumentException("size dimensions must be >= 0");
+        }
+        Ui.runOnUi(() -> peer.setSize(width, height));
+        return this;
+    }
+
     @Override public Image tooltip(String text) { Widget.super.tooltip(text); return this; }
     @Override public Image dragText(java.util.function.Supplier<String> textProvider) { Widget.super.dragText(textProvider); return this; }
     @Override public Image acceptText(java.util.function.Consumer<String> textHandler) { Widget.super.acceptText(textHandler); return this; }

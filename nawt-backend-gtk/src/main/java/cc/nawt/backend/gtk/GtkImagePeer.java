@@ -50,6 +50,10 @@ final class GtkImagePeer implements ImagePeer {
         }
     }
 
+    @Override public void setSize(int width, int height) {
+        Gtk.gtk_widget_set_size_request(widget, width <= 0 ? -1 : width, height <= 0 ? -1 : height);
+    }
+
     @Override public void setClipShape(ClipShape shape) {
         if (shape == null) return; // no-op: matches "no clip" default
         throw new UnsupportedOperationException(

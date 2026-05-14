@@ -1,5 +1,6 @@
 package cc.nawt.backend.gtk;
 
+import cc.nawt.LabelStyle;
 import cc.nawt.spi.LabelConfig;
 import cc.nawt.spi.LabelPeer;
 
@@ -63,6 +64,13 @@ final class GtkLabelPeer implements LabelPeer {
         }
         Gtk.gtk_label_set_attributes(widget, attrs);
         Pango.pango_attr_list_unref(attrs);
+    }
+
+    @Override public void setStyle(LabelStyle style) {
+        // No-op stub. Real implementation will add/remove the "dim-label" GTK
+        // CSS class via gtk_widget_add_css_class. Left silent (not throwing)
+        // because secondary styling is cosmetic — apps that set it on GTK
+        // should still render, just without the muted colour.
     }
 
     @Override public void close() { Gtk.g_object_unref(widget); }

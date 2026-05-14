@@ -113,6 +113,29 @@ public interface PeerFactory {
     }
 
     /**
+     * Create an interactive map peer. Default impl throws
+     * {@link UnsupportedOperationException}. Callers should check
+     * {@link cc.nawt.Capability#MAP} first.
+     */
+    default MapPeer createMap(MapConfig config) {
+        throw new UnsupportedOperationException(
+            "Map is not supported on this backend. "
+            + "Check Toolkit.supports(Capability.MAP) before constructing one.");
+    }
+
+    /** Create a Z-stack overlay (background + aligned foreground). */
+    default OverlayPeer createOverlay(OverlayConfig config) {
+        throw new UnsupportedOperationException(
+            "Overlay is not supported on this backend.");
+    }
+
+    /** Create a separator line. Backends must implement to support {@code Divider}. */
+    default DividerPeer createDivider(DividerConfig config) {
+        throw new UnsupportedOperationException(
+            "Divider is not supported on this backend.");
+    }
+
+    /**
      * Create a header-bar peer. The bar's title is taken from the host
      * {@link WindowPeer}'s title; the config supplies pre-built start/end
      * peers that will be packed into the bar.
