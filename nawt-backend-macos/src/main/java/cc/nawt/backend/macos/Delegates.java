@@ -85,6 +85,16 @@ final class Delegates {
         OUTLINE_RESOLVERS = new ConcurrentHashMap<>();
     static final ConcurrentHashMap<Long, Runnable> OUTLINE_SELECTION_HANDLERS = new ConcurrentHashMap<>();
 
+    /* ---------- Sidebar data source/delegate (view-based NSTableView source list) ----------
+     * Like the table data source, but provides per-row NSViews rather than
+     * objectValue strings. The view-provider returns the NSView pointer for the
+     * given row index; the sidebar peer maintains the underlying array. */
+
+    static final MemorySegment SIDEBAR_DATASOURCE_CLASS;
+    static final ConcurrentHashMap<Long, java.util.function.IntSupplier> SIDEBAR_ROW_COUNT_PROVIDERS = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<Long, java.util.function.IntFunction<MemorySegment>> SIDEBAR_VIEW_PROVIDERS = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<Long, Runnable> SIDEBAR_SELECTION_HANDLERS = new ConcurrentHashMap<>();
+
     /* ---------- Toolbar delegate (NSToolbar for HeaderBar) ----------
      * Per-instance lists of start- and end-region item NSViews; the delegate
      * synthesises NSToolbarItem instances on demand keyed by identifier
@@ -109,6 +119,11 @@ final class Delegates {
         CANVAS_VIEW_CLASS = registerCanvasViewClass();
         OUTLINE_DATASOURCE_CLASS = registerOutlineDataSourceClass();
         TOOLBAR_DELEGATE_CLASS = registerToolbarDelegateClass();
+        SIDEBAR_DATASOURCE_CLASS = registerSidebarDataSourceClass();
+    }
+
+    static MemorySegment newSidebarDataSource() {
+        return Objc.sendPtr(Objc.send_alloc(SIDEBAR_DATASOURCE_CLASS), Objc.sel("init"));
     }
 
     static MemorySegment newOutlineDataSource() {
@@ -765,6 +780,78 @@ final class Delegates {
         } catch (Throwable t) {
             t.printStackTrace();
             return MemorySegment.NULL;
+        }
+    }
+
+    /* ---------- Sidebar data source/delegate (registration) ---------- */
+
+    private static MemorySegment registerSidebarDataSourceClass() {
+        MemorySegment cls = Objc.allocateClassPair(Objc.cls("NSObject"), "NawtSidebarDataSource");
+        try {
+            // -(NSInteger)numberOfRowsInTableView:(NSTableView*)tv  → "q@:@"
+            MethodHandle rowsMh = MethodHandles.lookup().findStatic(
+                Delegates.class, "sidebarNumberOfRows",
+                MethodType.methodType(long.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
+            MemorySegment rowsImp = Linker.nativeLinker().upcallStub(
+                rowsMh,
+                FunctionDescriptor.of(Objc.NSINT, Objc.PTR, Objc.PTR, Objc.PTR),
+                Objc.GLOBAL);
+            Objc.addMethod(cls, Objc.sel("numberOfRowsInTableView:"), rowsImp, "q@:@");
+
+            // -(NSView*)tableView:(NSTableView*)tv viewForTableColumn:(NSTableColumn*)col row:(NSInteger)row → "@@:@@q"
+            MethodHandle viewMh = MethodHandles.lookup().findStatic(
+                Delegates.class, "sidebarViewForRow",
+                MethodType.methodType(MemorySegment.class,
+                    MemorySegment.class, MemorySegment.class,
+                    MemorySegment.class, MemorySegment.class, long.class));
+            MemorySegment viewImp = Linker.nativeLinker().upcallStub(
+                viewMh,
+                FunctionDescriptor.of(Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR, Objc.NSINT),
+                Objc.GLOBAL);
+            Objc.addMethod(cls, Objc.sel("tableView:viewForTableColumn:row:"), viewImp, "@@:@@q");
+
+            // -(void)tableViewSelectionDidChange:(NSNotification*)n → "v@:@"
+            MethodHandle selMh = MethodHandles.lookup().findStatic(
+                Delegates.class, "sidebarSelectionDidChange",
+                MethodType.methodType(void.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
+            MemorySegment selImp = Linker.nativeLinker().upcallStub(
+                selMh,
+                FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, Objc.PTR),
+                Objc.GLOBAL);
+            Objc.addMethod(cls, Objc.sel("tableViewSelectionDidChange:"), selImp, "v@:@");
+
+            Objc.registerClassPair(cls);
+            return cls;
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private static long sidebarNumberOfRows(MemorySegment self, MemorySegment cmd, MemorySegment tv) {
+        java.util.function.IntSupplier s = SIDEBAR_ROW_COUNT_PROVIDERS.get(self.address());
+        if (s == null) return 0;
+        try { return s.getAsInt(); }
+        catch (Throwable t) { t.printStackTrace(); return 0; }
+    }
+
+    @SuppressWarnings("unused")
+    private static MemorySegment sidebarViewForRow(
+        MemorySegment self, MemorySegment cmd, MemorySegment tv, MemorySegment col, long row) {
+        java.util.function.IntFunction<MemorySegment> p = SIDEBAR_VIEW_PROVIDERS.get(self.address());
+        if (p == null) return MemorySegment.NULL;
+        try {
+            MemorySegment v = p.apply((int) row);
+            return v == null ? MemorySegment.NULL : v;
+        } catch (Throwable t) { t.printStackTrace(); return MemorySegment.NULL; }
+    }
+
+    @SuppressWarnings("unused")
+    private static void sidebarSelectionDidChange(MemorySegment self, MemorySegment cmd, MemorySegment notification) {
+        Runnable r = SIDEBAR_SELECTION_HANDLERS.get(self.address());
+        if (r != null) {
+            try { r.run(); }
+            catch (Throwable t) { t.printStackTrace(); }
         }
     }
 }

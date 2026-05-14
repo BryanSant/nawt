@@ -47,4 +47,32 @@ public enum Capability {
     /** Sheet-style modal child windows attached to a parent window. macOS
      *  only via {@code NSWindow beginSheet}. Not yet exposed. */
     SHEET_MODAL_DIALOG,
+
+    /** {@link SystemIcon} values resolve to host-native glyphs — SF Symbols
+     *  on macOS, freedesktop icon-theme names on GTK. Backends without an
+     *  equivalent set should leave this unset and reject {@code Button.icon(...)}
+     *  and {@code Image.fromSymbol(...)}. */
+    SYSTEM_ICONS,
+
+    /** {@link Image#clipShape(ClipShape)} produces a clipped result. macOS
+     *  uses {@code CALayer.cornerRadius}; GTK will use CSS {@code border-radius}
+     *  on a styled {@code GtkPicture}. */
+    IMAGE_CLIP,
+
+    /** {@code Sidebar} widget renders with native source-list appearance —
+     *  vibrant translucent background, accent-color row highlight, narrow
+     *  inset rows. Backed by {@code NSTableView} source-list style on macOS
+     *  and {@code AdwNavigationSplitView}'s sidebar list on GTK. */
+    SIDEBAR,
+
+    /** {@code NavigationSplit} container renders with native split-view chrome —
+     *  titlebar extension, "toggle sidebar" toolbar item, animated
+     *  collapse/expand. Backed by {@code NSSplitViewController} on macOS and
+     *  {@code AdwNavigationSplitView} on GTK. */
+    NAVIGATION_SPLIT,
+
+    /** {@code Map} widget renders an interactive native map. Backed by
+     *  {@code MKMapView} on macOS, {@code libshumate} on GTK, {@code MapControl}
+     *  on WinUI 3. */
+    MAP,
 }

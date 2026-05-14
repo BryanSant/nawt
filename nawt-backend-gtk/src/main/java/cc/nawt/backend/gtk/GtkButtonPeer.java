@@ -1,5 +1,6 @@
 package cc.nawt.backend.gtk;
 
+import cc.nawt.SystemIcon;
 import cc.nawt.spi.ButtonConfig;
 import cc.nawt.spi.ButtonPeer;
 
@@ -23,6 +24,9 @@ final class GtkButtonPeer implements ButtonPeer {
         if (cfg.fontSize() > 0) {
             applyFontSize(widget, cfg.fontSize());
         }
+        if (cfg.icon() != null) {
+            setIcon(cfg.icon());
+        }
     }
 
     MemorySegment widget() { return widget; }
@@ -34,6 +38,14 @@ final class GtkButtonPeer implements ButtonPeer {
     @Override
     public void setFontSize(int points) {
         applyFontSize(widget, points);
+    }
+
+    @Override
+    public void setIcon(SystemIcon icon) {
+        if (icon == null) return; // no-op: matches "no icon" default
+        throw new UnsupportedOperationException(
+            "Button.icon(SystemIcon) is not yet implemented on the GTK backend. "
+            + "Check Toolkit.supports(Capability.SYSTEM_ICONS) before calling.");
     }
 
     /**

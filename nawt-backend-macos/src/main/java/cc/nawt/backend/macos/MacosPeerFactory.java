@@ -110,7 +110,10 @@ public final class MacosPeerFactory implements PeerFactory {
             cc.nawt.Capability.TOAST_OVERLAY,
             cc.nawt.Capability.DRAG_TEXT,
             cc.nawt.Capability.GLOBAL_MENU_BAR,
-            cc.nawt.Capability.SYSTEM_TRAY);
+            cc.nawt.Capability.SYSTEM_TRAY,
+            cc.nawt.Capability.IMAGE_CLIP,
+            cc.nawt.Capability.SYSTEM_ICONS,
+            cc.nawt.Capability.SIDEBAR);
     }
 
     @Override
@@ -143,6 +146,7 @@ public final class MacosPeerFactory implements PeerFactory {
     @Override public TreePeer createTree(TreeConfig cfg) { return new MacosTreePeer(cfg); }
     @Override public ImagePeer createImage(ImageConfig cfg) { return new MacosImagePeer(cfg); }
     @Override public CanvasPeer createCanvas(CanvasConfig cfg) { return new MacosCanvasPeer(cfg); }
+    @Override public cc.nawt.spi.SidebarPeer createSidebar(cc.nawt.spi.SidebarConfig cfg) { return new MacosSidebarPeer(cfg); }
     @Override public cc.nawt.spi.HeaderBarPeer createHeaderBar(cc.nawt.spi.HeaderBarConfig cfg) {
         return new MacosHeaderBarPeer(cfg);
     }

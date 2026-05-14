@@ -253,6 +253,7 @@ final class MacosContainerPeer implements ContainerPeer {
             case MacosTreePeer tr -> tr.view();
             case MacosImagePeer im -> im.view();
             case MacosCanvasPeer cv -> cv.view();
+            case MacosSidebarPeer sb -> sb.view();
             case MacosWindowPeer wp -> throw new IllegalArgumentException(
                 "Window cannot be added as a child view");
             default -> throw new IllegalArgumentException(

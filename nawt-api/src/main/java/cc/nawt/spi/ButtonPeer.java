@@ -1,5 +1,7 @@
 package cc.nawt.spi;
 
+import cc.nawt.SystemIcon;
+
 public non-sealed interface ButtonPeer extends Peer {
     void setText(String text);
 
@@ -12,4 +14,7 @@ public non-sealed interface ButtonPeer extends Peer {
 
     /** Set title font point size; {@code 0} restores the platform default. */
     void setFontSize(int points);
+
+    /** Show a host-native icon on the button; {@code null} clears any existing icon. */
+    void setIcon(SystemIcon icon);
 }

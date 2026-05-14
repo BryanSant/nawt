@@ -1,12 +1,12 @@
 package cc.nawt.backend.macos;
 
+import cc.nawt.ClipShape;
 import cc.nawt.spi.ImageConfig;
 import cc.nawt.spi.ImagePeer;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 
 /** NSImageView wrapping an NSImage. */
 final class MacosImagePeer implements ImagePeer {
@@ -24,6 +24,8 @@ final class MacosImagePeer implements ImagePeer {
 
         if (cfg.path() != null && !cfg.path().isEmpty()) setPath(cfg.path());
         else if (cfg.data() != null) setData(cfg.data());
+
+        if (cfg.clipShape() != null) setClipShape(cfg.clipShape());
     }
 
     MemorySegment view() { return view; }
@@ -61,6 +63,39 @@ final class MacosImagePeer implements ImagePeer {
             img = Objc.sendPtr(alloc, Objc.sel("initWithData:"), ns);
         }
         replaceImage(img);
+    }
+
+    @Override public void setClipShape(ClipShape shape) {
+        Objc.sendVoidBool(view, Objc.sel("setWantsLayer:"), true);
+        MemorySegment layer = Objc.sendPtr(view, Objc.sel("layer"));
+        if (layer == null || layer.address() == 0) return;
+        if (shape == null) {
+            setCornerRadius(layer, 0.0);
+            Objc.sendVoidBool(layer, Objc.sel("setMasksToBounds:"), false);
+            return;
+        }
+        switch (shape) {
+            case ClipShape.Circle ignored -> {
+                // CALayer renders any cornerRadius >= min(w, h) / 2 as an
+                // inscribed circle/capsule. A very large constant gives us
+                // an always-circular mask without needing to observe size
+                // changes; the value is far larger than any view we'll
+                // realistically display.
+                setCornerRadius(layer, 1_000_000.0);
+                Objc.sendVoidBool(layer, Objc.sel("setMasksToBounds:"), true);
+            }
+            case ClipShape.RoundedRect rr -> {
+                setCornerRadius(layer, rr.cornerRadius());
+                Objc.sendVoidBool(layer, Objc.sel("setMasksToBounds:"), true);
+            }
+        }
+    }
+
+    private static void setCornerRadius(MemorySegment layer, double r) {
+        try {
+            Objc.msgSend(FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, Objc.CGFLOAT))
+                .invoke(layer, Objc.sel("setCornerRadius:"), r);
+        } catch (Throwable t) { throw new RuntimeException(t); }
     }
 
     @Override public void close() {

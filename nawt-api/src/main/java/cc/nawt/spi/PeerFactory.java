@@ -90,6 +90,18 @@ public interface PeerFactory {
     CanvasPeer createCanvas(CanvasConfig config);
 
     /**
+     * Create a sidebar (source-list) peer hosting the given pre-built row
+     * peers. Default impl throws {@link UnsupportedOperationException};
+     * backends override to provide native source-list styling. Callers should
+     * check {@link cc.nawt.Capability#SIDEBAR} first.
+     */
+    default SidebarPeer createSidebar(SidebarConfig config) {
+        throw new UnsupportedOperationException(
+            "Sidebar is not supported on this backend. "
+            + "Check Toolkit.supports(Capability.SIDEBAR) before constructing one.");
+    }
+
+    /**
      * Create a header-bar peer. The bar's title is taken from the host
      * {@link WindowPeer}'s title; the config supplies pre-built start/end
      * peers that will be packed into the bar.

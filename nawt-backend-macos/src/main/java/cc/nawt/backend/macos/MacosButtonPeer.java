@@ -1,5 +1,6 @@
 package cc.nawt.backend.macos;
 
+import cc.nawt.SystemIcon;
 import cc.nawt.spi.ButtonConfig;
 import cc.nawt.spi.ButtonPeer;
 
@@ -30,6 +31,9 @@ final class MacosButtonPeer implements ButtonPeer {
         if (config.fontSize() > 0) {
             applyFontSize(view, config.fontSize());
         }
+        if (config.icon() != null) {
+            setIcon(config.icon());
+        }
     }
 
     MemorySegment view() { return view; }
@@ -47,6 +51,44 @@ final class MacosButtonPeer implements ButtonPeer {
     @Override
     public void setFontSize(int points) {
         applyFontSize(view, points);
+    }
+
+    @Override
+    public void setIcon(SystemIcon icon) {
+        if (icon == null) {
+            Objc.sendVoid(view, Objc.sel("setImage:"), Objc.NIL);
+            // NSImageLeading = 2 — reset image-position to leading even when
+            // empty so a later setIcon() resumes leading-image rendering.
+            Objc.sendVoidLong(view, Objc.sel("setImagePosition:"), 2L);
+            return;
+        }
+        MemorySegment image;
+        try {
+            image = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                    Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR))
+                .invoke(
+                    Objc.cls("NSImage"),
+                    Objc.sel("imageWithSystemSymbolName:accessibilityDescription:"),
+                    NSString.from(icon.sfSymbolName()),
+                    Objc.NIL);
+        } catch (Throwable t) { throw new RuntimeException(t); }
+        if (image == null || image.address() == 0) {
+            // SF Symbol lookup failed (very old OS or removed symbol). Leave
+            // the title intact and bail rather than crashing.
+            return;
+        }
+        Objc.sendVoid(view, Objc.sel("setImage:"), image);
+        // NSImageOnly = 5 when title is empty (icon-only); NSImageLeading = 2
+        // otherwise (icon + title side-by-side).
+        boolean titleEmpty = isTitleEmpty();
+        Objc.sendVoidLong(view, Objc.sel("setImagePosition:"), titleEmpty ? 5L : 2L);
+    }
+
+    private boolean isTitleEmpty() {
+        MemorySegment title = Objc.sendPtr(view, Objc.sel("title"));
+        if (title == null || title.address() == 0) return true;
+        long len = Objc.sendLong(title, Objc.sel("length"));
+        return len == 0L;
     }
 
     /** NSBezelStyleFlexiblePush (formerly NSBezelStyleRegularSquare) — the

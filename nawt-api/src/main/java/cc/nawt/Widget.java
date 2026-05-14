@@ -10,7 +10,8 @@ public sealed interface Widget extends AutoCloseable
     permits Container, Label, Button, TextField, ListView,
             Checkbox, Switch, Radio,
             Slider, ProgressBar, Spinner,
-            DropDown, Tree, Image, Canvas {
+            DropDown, Tree, Image, Canvas,
+            Sidebar {
 
     /**
      * Escape hatch: the underlying native peer.

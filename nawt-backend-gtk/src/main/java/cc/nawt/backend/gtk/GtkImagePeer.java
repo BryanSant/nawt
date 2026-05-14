@@ -1,5 +1,6 @@
 package cc.nawt.backend.gtk;
 
+import cc.nawt.ClipShape;
 import cc.nawt.spi.ImageConfig;
 import cc.nawt.spi.ImagePeer;
 
@@ -47,6 +48,13 @@ final class GtkImagePeer implements ImagePeer {
                 Gtk.g_bytes_unref(bytes);
             }
         }
+    }
+
+    @Override public void setClipShape(ClipShape shape) {
+        if (shape == null) return; // no-op: matches "no clip" default
+        throw new UnsupportedOperationException(
+            "Image.clipShape is not yet implemented on the GTK backend. "
+            + "Check Toolkit.supports(Capability.IMAGE_CLIP) before calling.");
     }
 
     @Override public void close() {

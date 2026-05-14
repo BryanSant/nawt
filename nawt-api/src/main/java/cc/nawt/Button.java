@@ -27,8 +27,35 @@ public final class Button implements Widget {
         });
     }
 
+    /** Icon-only button. Requires {@link Capability#SYSTEM_ICONS} on the active backend. */
+    public static Button of(SystemIcon icon) {
+        return Ui.onUi(() -> {
+            ButtonPeer p = Toolkit.requireLaunched().peerFactory()
+                .createButton(new ButtonConfig("", 0, icon));
+            return new Button(p);
+        });
+    }
+
+    /** Button with both an icon (leading) and a text label. Requires {@link Capability#SYSTEM_ICONS}. */
+    public static Button of(SystemIcon icon, String text) {
+        return Ui.onUi(() -> {
+            ButtonPeer p = Toolkit.requireLaunched().peerFactory()
+                .createButton(new ButtonConfig(text, 0, icon));
+            return new Button(p);
+        });
+    }
+
     public Button text(String text) {
         Ui.runOnUi(() -> peer.setText(text));
+        return this;
+    }
+
+    /**
+     * Replace the button's icon. Pass {@code null} to remove an existing icon.
+     * Requires {@link Capability#SYSTEM_ICONS} on the active backend.
+     */
+    public Button icon(SystemIcon icon) {
+        Ui.runOnUi(() -> peer.setIcon(icon));
         return this;
     }
 

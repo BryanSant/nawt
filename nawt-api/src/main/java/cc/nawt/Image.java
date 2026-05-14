@@ -3,6 +3,10 @@ package cc.nawt;
 import cc.nawt.spi.ImageConfig;
 import cc.nawt.spi.ImagePeer;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+
 public final class Image implements Widget {
 
     private final ImagePeer peer;
@@ -12,7 +16,7 @@ public final class Image implements Widget {
     public static Image fromFile(String path) {
         return Ui.onUi(() -> {
             ImagePeer p = Toolkit.requireLaunched().peerFactory()
-                .createImage(new ImageConfig(path, null));
+                .createImage(new ImageConfig(path, null, null));
             return new Image(p);
         });
     }
@@ -20,9 +24,32 @@ public final class Image implements Widget {
     public static Image fromBytes(byte[] data) {
         return Ui.onUi(() -> {
             ImagePeer p = Toolkit.requireLaunched().peerFactory()
-                .createImage(new ImageConfig(null, data));
+                .createImage(new ImageConfig(null, data, null));
             return new Image(p);
         });
+    }
+
+    /**
+     * Load an image from a classpath resource. {@code anchor} is the class
+     * whose classloader and package are used to resolve {@code path} — pass
+     * a class from the calling module to make resource resolution work
+     * across JPMS module boundaries. {@code path} follows the usual
+     * {@link Class#getResourceAsStream} rules: a leading {@code /} is
+     * absolute on the classpath; otherwise the path is resolved relative
+     * to {@code anchor}'s package.
+     */
+    public static Image fromResource(Class<?> anchor, String path) {
+        byte[] bytes;
+        try (InputStream is = anchor.getResourceAsStream(path)) {
+            if (is == null) {
+                throw new IllegalArgumentException(
+                    "Resource not found: " + path + " (anchor=" + anchor.getName() + ")");
+            }
+            bytes = is.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return fromBytes(bytes);
     }
 
     public Image path(String path) {
@@ -32,6 +59,16 @@ public final class Image implements Widget {
 
     public Image data(byte[] data) {
         Ui.runOnUi(() -> peer.setData(data));
+        return this;
+    }
+
+    /**
+     * Mask the image to the given shape. Pass {@code null} to remove an
+     * existing clip. Requires {@link Capability#IMAGE_CLIP} on the active
+     * backend — backends without it will throw {@code UnsupportedOperationException}.
+     */
+    public Image clipShape(ClipShape shape) {
+        Ui.runOnUi(() -> peer.setClipShape(shape));
         return this;
     }
 
