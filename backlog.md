@@ -1,8 +1,8 @@
-# SWAT backlog
+# NAWT backlog
 
 Known gaps and follow-up work, ordered by priority.
 
-SWAT targets three platforms only: **macOS/AppKit**, **Windows/WinUI 3**, and **Linux/GTK 4 + libadwaita**. Every backlog entry is scoped to one or more of those three. The Linux target is GTK 4 *and* libadwaita as a single product — when an entry says "GTK", read it as "GTK 4 + libadwaita 1.5+", and prefer Adwaita primitives wherever libadwaita refines a GTK widget. See `README.md` for the full mission statement and `swat-peer-comparision.md` for the per-component analysis.
+NAWT targets three platforms only: **macOS/AppKit**, **Windows/WinUI 3**, and **Linux/GTK 4 + libadwaita**. Every backlog entry is scoped to one or more of those three. The Linux target is GTK 4 *and* libadwaita as a single product — when an entry says "GTK", read it as "GTK 4 + libadwaita 1.5+", and prefer Adwaita primitives wherever libadwaita refines a GTK widget. See `README.md` for the full mission statement and `nawt-peer-comparision.md` for the per-component analysis.
 
 ## Tier 1 follow-ups (gaps in the current implementation)
 
@@ -27,7 +27,7 @@ SWAT targets three platforms only: **macOS/AppKit**, **Windows/WinUI 3**, and **
 - **Missing for non-trivial use**: stroke width, line caps/joins, paths (curves, arcs), text rendering, clipping, transforms, alpha blending modes, gradients, image draws.
 - Sufficient for Tier 1 demos; extend as real samples need more.
 
-## Plan items not yet started (from `swat-native-toolkit-plan.md`)
+## Plan items not yet started (from `nawt-native-toolkit-plan.md`)
 
 ### Step 2 of rollout — Capability registry done; typed hints pending
 - **Done**: `Capability` enum (`HEADER_BAR`, `TOAST_OVERLAY`, `DRAG_TEXT`, `GLOBAL_MENU_BAR`, `SYSTEM_TRAY`, `TRANSLUCENT_BACKDROP`, `SHEET_MODAL_DIALOG`), `Capabilities` wrapper (`spi/Capabilities.java`), `PeerFactory.capabilities()` with empty default, backend overrides declaring what they ship today, `Toolkit.supports(Capability)` public helper.
@@ -41,17 +41,17 @@ SWAT targets three platforms only: **macOS/AppKit**, **Windows/WinUI 3**, and **
   - **Mid-lifetime `setMenu`** is not supported — the menu attached at construction is the one that gets exported. Swapping menus needs unexport + re-export plus emitting a `Menu` property change.
   - **Pixmap icons** are not supported — `IconName` + `IconThemePath` only. Apps must ship their icon as a freedesktop-themed PNG. Pixmap support would need the `(iiay)` array of (width, height, ARGB bytes) tuples.
   - **`ToolTip` struct** is omitted from the SNI XML; hosts fall back to displaying `Title` on hover, which gives equivalent UX. Real `(sa(iiay)ss)` tuple support would land with pixmap icons.
-  - **Click handlers** (`Activate` / `SecondaryActivate` / `Scroll`) are no-ops; click delivery happens through the menu's `GAction` callbacks. SWAT doesn't currently expose a primary-click handler on the public `SystemTray` API anyway.
+  - **Click handlers** (`Activate` / `SecondaryActivate` / `Scroll`) are no-ops; click delivery happens through the menu's `GAction` callbacks. NAWT doesn't currently expose a primary-click handler on the public `SystemTray` API anyway.
 - Reference C implementation: `../libayatana-appindicator-glib/src/ayatana-appindicator.c`.
 
 ### Step 1 (done) — Tier model validated with `HeaderBar`
 - SPI: `HeaderBarConfig`, `HeaderBarPeer`, `PeerFactory.createHeaderBar`, `WindowPeer.setHeaderBar`. Public `HeaderBar` (not in the Widget hierarchy — it's window chrome).
-- macOS: `NSToolbar` in unified style with `window.toolbarStyle = .unified`. `SwatToolbarDelegate` registered in `Delegates.java`; items wrap their underlying NSView via `NSToolbarItem.setView:`.
+- macOS: `NSToolbar` in unified style with `window.toolbarStyle = .unified`. `NawtToolbarDelegate` registered in `Delegates.java`; items wrap their underlying NSView via `NSToolbarItem.setView:`.
 - GTK: `AdwHeaderBar` inside `AdwToolbarView` inside `AdwWindow`. The libadwaita FFM bindings now live in `Adw.java`; `GtkPeerFactory.supports()` probes `libadwaita-1.so.0` for `adw_init`. Every window gets a default empty `AdwHeaderBar` so chrome is always present; `setHeaderBar` swaps the default for a user-supplied bar.
-- Subsequent libadwaita widgets reuse `Adw.java`. **Done so far**: `AdwAlertDialog` (replaced `GtkAlertDialog`); `AdwToast` / `AdwToastOverlay` (every `GtkWindowPeer` now wraps content in an `AdwToastOverlay`, exposed via `Window.toast(String)`). Remaining candidates: `AdwNavigationSplitView` (responsive split layout), `AdwClamp` (readable line widths), `AdwSpringAnimation` (when SWAT grows an animation API).
+- Subsequent libadwaita widgets reuse `Adw.java`. **Done so far**: `AdwAlertDialog` (replaced `GtkAlertDialog`); `AdwToast` / `AdwToastOverlay` (every `GtkWindowPeer` now wraps content in an `AdwToastOverlay`, exposed via `Window.toast(String)`). Remaining candidates: `AdwNavigationSplitView` (responsive split layout), `AdwClamp` (readable line widths), `AdwSpringAnimation` (when NAWT grows an animation API).
 
 ### Step 4–6 — WinUI 3 backend (future, not started)
-- `swat-backend-windows/` module against WinRT via Panama FFM.
+- `nawt-backend-windows/` module against WinRT via Panama FFM.
 - Revisit `UiLoop`/`WindowPeer` for `DispatcherQueue.TryEnqueue` and HWND ownership before any Windows code lands.
 - `WindowsSystemTrayPeer` via `Shell_NotifyIcon` once the SPI is proven on macOS + Linux.
 
@@ -73,7 +73,7 @@ SWAT targets three platforms only: **macOS/AppKit**, **Windows/WinUI 3**, and **
 ### Document the peer escape hatch
 - Add javadoc on `Widget.peer()` and `Peer` calling out:
   - Casting to backend-specific subtypes is supported but unstable.
-  - Backend module names (`io.github.swat.backend.gtk` / `…macos`) are part of the contract for users targeting a specific backend.
+  - Backend module names (`cc.nawt.backend.gtk` / `…macos`) are part of the contract for users targeting a specific backend.
   - Casting in cross-platform code is a smell; use capabilities (when added) instead.
 
 ### macOS global menu in API contract

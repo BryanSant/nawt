@@ -29,11 +29,11 @@ jobs:
         run: ./gradlew assemble check
 
       - name: Tier 1 smoke (NSApp on the JVM main thread)
-        run: ./gradlew :swat-samples:tier1Smoke
+        run: ./gradlew :nawt-samples:tier1Smoke
 
   linux:
     name: Linux / GTK 4 + libadwaita
-    # Ubuntu 24.04 ships GTK 4.14 and libadwaita 1.5 — meets SWAT's minimum.
+    # Ubuntu 24.04 ships GTK 4.14 and libadwaita 1.5 — meets NAWT's minimum.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -63,4 +63,4 @@ jobs:
         # xvfb-run wraps the command in a fresh X server.
         # dbus-run-session wraps in a fresh session bus so GDBus connects.
         run: |
-          xvfb-run -a dbus-run-session -- ./gradlew :swat-samples:tier1Smoke
+          xvfb-run -a dbus-run-session -- ./gradlew :nawt-samples:tier1Smoke

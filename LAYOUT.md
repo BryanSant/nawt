@@ -1,8 +1,8 @@
-# SWAT layout contract
+# NAWT layout contract
 
 ## Strategy: wrap, don't reimplement
 
-SWAT delegates layout to the host's native container on every backend:
+NAWT delegates layout to the host's native container on every backend:
 
 | Container | macOS | Linux | Windows |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ contract below.
 The rationale for this strategy — including why SWT chose the opposite path
 in 2001 and why platform convergence makes the wrapping strategy correct in
 2026 — lives in the per-PR plan at the time of adoption and in
-`swat-peer-comparision.md`.
+`nawt-peer-comparision.md`.
 
 ## The contract
 
@@ -227,24 +227,24 @@ When the Windows backend lands, the mapping will be:
 - **Cross-platform pixel determinism.** A `spacing(12)` Row will produce
   visually similar output everywhere, but the platforms differ in HiDPI
   rounding, text baselines, default control insets, and accent/focus rings.
-  SWAT optimizes for native correctness, not pixel-identical output. If you
+  NAWT optimizes for native correctness, not pixel-identical output. If you
   need identical pixels everywhere, the README's comparison table already
-  names the right tool — and it is not SWAT.
+  names the right tool — and it is not NAWT.
 
 ## Verification
 
 Every backend that adds a new layout knob must keep the smoke tests passing:
 
-- `:swat-samples:tier1Smoke` constructs a Row with `.expand(...)`, a Column
+- `:nawt-samples:tier1Smoke` constructs a Row with `.expand(...)`, a Column
   with mixed `alignSelf` per child, and a Grid with a spanning cell and a
   cell using `alignSelf=CENTER`. Construction-only — confirms the SPI path
   doesn't throw.
-- `:swat-samples:tier1` includes a visible "Layout (expand + alignSelf)"
+- `:nawt-samples:tier1` includes a visible "Layout (expand + alignSelf)"
   frame. The expanding TextField should absorb the slack between a fixed
   leading Label and a fixed trailing Button when the window is resized; the
   alignment Column should show three Buttons at START, CENTER, END
   positions across the container's cross axis.
-- `:swat-samples:tier1` also includes a "Grid (form layout + span)" frame.
+- `:nawt-samples:tier1` also includes a "Grid (form layout + span)" frame.
   Label cells stay at intrinsic width while TextField cells with
   `EXPAND` absorb the remaining column width; the final "Save profile"
   button spans both columns and is right-aligned via `alignSelf=END`.
