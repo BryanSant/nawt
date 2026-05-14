@@ -2,6 +2,7 @@ package cc.nawt.samples;
 
 import cc.nawt.Button;
 import cc.nawt.Canvas;
+import cc.nawt.Capability;
 import cc.nawt.Checkbox;
 import cc.nawt.Column;
 import cc.nawt.DropDown;
@@ -24,6 +25,7 @@ import cc.nawt.TextField;
 import cc.nawt.Tree;
 import cc.nawt.Ui;
 import cc.nawt.Window;
+import cc.nawt.menu.Menu;
 import cc.nawt.spi.Alignment;
 import cc.nawt.spi.ChildLayoutConfig;
 
@@ -188,14 +190,21 @@ public final class Tier1Demo {
             .add(services)
             .build();
 
-        HeaderBar header = HeaderBar.builder()
+        HeaderBar.Builder headerBuilder = HeaderBar.builder()
             .start(Button.of("←")
                 .onClick(e -> Ui.invokeLater(() -> status.text("Back"))))
             .start(Button.of("→")
-                .onClick(e -> Ui.invokeLater(() -> status.text("Forward"))))
-            .end(Button.of("⚙")
-                .onClick(e -> Ui.invokeLater(() -> status.text("Settings"))))
-            .build();
+                .onClick(e -> Ui.invokeLater(() -> status.text("Forward"))));
+        if (Toolkit.supports(Capability.HEADER_BAR_MENU)) {
+            Menu burger = Menu.builder("")
+                .action("Settings", e -> Ui.invokeLater(() -> status.text("Settings")))
+                .build();
+            headerBuilder.menu(burger);
+        } else {
+            headerBuilder.end(Button.of("⛭")
+                .onClick(e -> Ui.invokeLater(() -> status.text("Settings"))));
+        }
+        HeaderBar header = headerBuilder.build();
 
         Window window = Window.builder()
             .title("NAWT Tier 1")
