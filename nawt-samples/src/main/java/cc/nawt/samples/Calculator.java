@@ -75,7 +75,9 @@ public final class Calculator {
 
         // alignCross=CENTER lets the Grid sit at its intrinsic width
         // (= homogeneous column widths summed) instead of being stretched to
-        // fill the window, so the buttons size to their content.
+        // fill the window, so the buttons size to their content. fitContent()
+        // then sizes the window itself to that intrinsic content, leaving the
+        // padding as the uniform margin on every side regardless of platform.
         Column content = Column.builder()
             .padding(12).spacing(0)
             .alignCross(Alignment.CENTER)
@@ -84,7 +86,7 @@ public final class Calculator {
 
         Window.builder()
             .title("Calculator")
-            .size(360, 480)
+            .fitContent()
             .resizable(false)
             .content(content)
             .build()

@@ -37,6 +37,7 @@ final class MacosWindowPeer implements WindowPeer {
 
     private final MemorySegment window;   // NSWindow, retained
     private final MemorySegment delegate; // NawtWindowDelegate, retained
+    private final boolean fitContent;
     private int width;
     private int height;
     private volatile BooleanSupplier permitClose;
@@ -44,6 +45,7 @@ final class MacosWindowPeer implements WindowPeer {
     MacosWindowPeer(WindowConfig cfg) {
         this.width = cfg.width();
         this.height = cfg.height();
+        this.fitContent = cfg.fitContent();
 
         // [[NSWindow alloc] initWithContentRect:rect styleMask:mask backing:type defer:NO]
         MemorySegment alloc = Objc.send_alloc(Objc.cls("NSWindow"));
@@ -123,19 +125,41 @@ final class MacosWindowPeer implements WindowPeer {
         // NSViewWidthSizable = 2, NSViewHeightSizable = 16
         Objc.sendVoidLong(view, Objc.sel("setAutoresizingMask:"), 2L | 16L);
         Objc.sendVoid(window, Objc.sel("setContentView:"), view);
-        // Re-apply the configured content size. setContentView: can trigger
-        // an Auto Layout pass that resizes the window to the content's
-        // fittingSize (often smaller than the configured size, especially
-        // when content has finite intrinsic widths). Force the size back to
-        // what the caller requested.
+        // setContentView: can trigger an Auto Layout pass that resizes the
+        // window to the content's fittingSize. Two modes:
+        //   - fitContent: adopt that fitting size as the window's actual size,
+        //     and cache it so subsequent setContentView calls don't snap back
+        //     to the stale configured size.
+        //   - !fitContent: force the size back to what the caller requested
+        //     via .size(w, h) (the historical behaviour).
         try (var arena = Arena.ofConfined()) {
             MemorySegment size = arena.allocate(NSSIZE);
-            size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, (double) width);
-            size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, (double) height);
+            if (fitContent) {
+                MemorySegment fitting;
+                try {
+                    fitting = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                            NSSIZE, Objc.PTR, Objc.PTR))
+                        .invoke(arena, view, Objc.sel("fittingSize"));
+                } catch (Throwable t) { throw new RuntimeException(t); }
+                double fw = fitting.getAtIndex(ValueLayout.JAVA_DOUBLE, 0);
+                double fh = fitting.getAtIndex(ValueLayout.JAVA_DOUBLE, 1);
+                this.width = (int) Math.ceil(fw);
+                this.height = (int) Math.ceil(fh);
+                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, fw);
+                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, fh);
+            } else {
+                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, (double) width);
+                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, (double) height);
+            }
             try {
                 Objc.msgSend(FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, NSSIZE))
                     .invoke(window, Objc.sel("setContentSize:"), size);
             } catch (Throwable t) { throw new RuntimeException(t); }
+        }
+        // Re-center the window after fitContent resized it, so the smaller
+        // window doesn't end up anchored at the original top-left.
+        if (fitContent) {
+            Objc.sendVoid(window, Objc.sel("center"));
         }
     }
 

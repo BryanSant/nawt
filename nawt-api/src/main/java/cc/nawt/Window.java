@@ -123,6 +123,7 @@ public final class Window implements Container {
         private int width = 640;
         private int height = 480;
         private boolean resizable = true;
+        private boolean fitContent;
         private Widget content;
         private MenuBar menuBar;
         private HeaderBar headerBar;
@@ -133,6 +134,16 @@ public final class Window implements Container {
         public Builder size(int w, int h) { this.width = w; this.height = h; return this; }
         /** Whether the user can resize the window. Default {@code true}. */
         public Builder resizable(boolean resizable) { this.resizable = resizable; return this; }
+        /**
+         * Size the window to its content's natural measurement instead of a
+         * fixed pixel size. Each backend uses its host-native fitting path —
+         * AppKit's {@code -[NSView fittingSize]}, GTK's
+         * {@code gtk_window_set_default_size(-1, -1)} natural-size sentinel —
+         * so the resulting pixel dimensions differ per platform by design.
+         * {@code .size(w, h)} becomes advisory; the configured size seeds the
+         * initial frame on macOS before the content's natural size is adopted.
+         */
+        public Builder fitContent() { this.fitContent = true; return this; }
         public Builder content(Widget content) { this.content = content; return this; }
         public Builder menuBar(MenuBar menuBar) { this.menuBar = menuBar; return this; }
         public Builder headerBar(HeaderBar headerBar) { this.headerBar = headerBar; return this; }
@@ -140,7 +151,7 @@ public final class Window implements Container {
         public Window build() {
             return Ui.onUi(() -> {
                 WindowPeer p = Toolkit.requireLaunched().peerFactory()
-                    .createWindow(new WindowConfig(title, width, height, resizable));
+                    .createWindow(new WindowConfig(title, width, height, resizable, fitContent));
                 // Set header bar before content so the chrome is in place when
                 // the content view is resolved against the window's frame.
                 if (headerBar != null) p.setHeaderBar(headerBar.peer());

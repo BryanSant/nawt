@@ -82,7 +82,7 @@ public final class Demo {
             .add(status)
             .add(fruits)
             .add(confirm)
-            .add(cc.nawt.Row.of(pickFile, pickFolder))
+            .add(cc.nawt.Row.builder().expand(pickFile).expand(pickFolder).build())
             .build();
 
         // Sample-specific "primary" commands. About is NOT in this list — it's

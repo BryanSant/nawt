@@ -24,6 +24,7 @@ final class MacosContainerPeer implements ContainerPeer {
     private final boolean vertical;
     private final int padding;
     private final Alignment crossAxis;
+    private MemorySegment firstExpandChild; // for pinning subsequent expand siblings equal
 
     MacosContainerPeer(ContainerConfig cfg) {
         MemorySegment v = Objc.sendPtr(Objc.send_alloc(Objc.cls("NSStackView")), Objc.sel("init"));
@@ -95,6 +96,17 @@ final class MacosContainerPeer implements ContainerPeer {
             // 1 = vertical (height hugging). Main axis = stack orientation.
             long mainAxisOrientation = vertical ? 1L : 0L;
             setContentHuggingPriority(subview, 100, mainAxisOrientation);
+
+            // With identical hugging priorities, NSStackViewDistributionFill
+            // gives all slack to the first expanding child. Pin each subsequent
+            // expanding sibling's main-axis dimension equal to the first one
+            // so they share slack equally — matching the LAYOUT.md contract
+            // and GTK's hexpand semantics.
+            if (firstExpandChild == null) {
+                firstExpandChild = subview;
+            } else {
+                pinMainAxisEqual(firstExpandChild, subview, vertical);
+            }
         }
     }
 
@@ -162,6 +174,28 @@ final class MacosContainerPeer implements ContainerPeer {
             }
         } catch (Throwable t) { throw new RuntimeException(t); }
         setPriorityViaKVC(c, 350);
+        Objc.sendVoidBool(c, Objc.sel("setActive:"), true);
+    }
+
+    /**
+     * Pin two arranged subviews to have equal main-axis size. Used to make
+     * multiple expand-marked siblings share slack equally under
+     * NSStackViewDistributionFill. Priority 700 — below required so it
+     * doesn't propagate to the window's fittingSize and lock its width, but
+     * above the 350 cross-axis stretch so equal-distribution wins when it
+     * meaningfully constrains the layout.
+     */
+    static void pinMainAxisEqual(MemorySegment a, MemorySegment b, boolean stackIsVertical) {
+        String dim = stackIsVertical ? "heightAnchor" : "widthAnchor";
+        MemorySegment anchorA = Objc.sendPtr(a, Objc.sel(dim));
+        MemorySegment anchorB = Objc.sendPtr(b, Objc.sel(dim));
+        MemorySegment c;
+        try {
+            c = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                    Objc.PTR, Objc.PTR, Objc.PTR, Objc.PTR))
+                .invoke(anchorB, Objc.sel("constraintEqualToAnchor:"), anchorA);
+        } catch (Throwable t) { throw new RuntimeException(t); }
+        setPriorityViaKVC(c, 700);
         Objc.sendVoidBool(c, Objc.sel("setActive:"), true);
     }
 

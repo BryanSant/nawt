@@ -1,6 +1,6 @@
 package cc.nawt.spi;
 
-public record WindowConfig(String title, int width, int height, boolean resizable) {
+public record WindowConfig(String title, int width, int height, boolean resizable, boolean fitContent) {
     public WindowConfig {
         if (title == null) title = "";
         if (width <= 0) width = 640;
@@ -8,6 +8,10 @@ public record WindowConfig(String title, int width, int height, boolean resizabl
     }
 
     public WindowConfig(String title, int width, int height) {
-        this(title, width, height, true);
+        this(title, width, height, true, false);
+    }
+
+    public WindowConfig(String title, int width, int height, boolean resizable) {
+        this(title, width, height, resizable, false);
     }
 }

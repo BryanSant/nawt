@@ -35,7 +35,14 @@ final class GtkWindowPeer implements WindowPeer {
         Adw.adw_init();
         MemorySegment w = Adw.adw_window_new();
         Gtk.gtk_window_set_title(w, cfg.title());
-        Gtk.gtk_window_set_default_size(w, cfg.width(), cfg.height());
+        if (cfg.fitContent()) {
+            // GTK 4 treats -1 on either axis as "use the natural size."
+            // AdwWindow → AdwToolbarView → AdwToastOverlay → user content
+            // propagates the child's intrinsic measurement up to the window.
+            Gtk.gtk_window_set_default_size(w, -1, -1);
+        } else {
+            Gtk.gtk_window_set_default_size(w, cfg.width(), cfg.height());
+        }
         Gtk.gtk_window_set_resizable(w, cfg.resizable());
 
         MemorySegment tv = Adw.adw_toolbar_view_new();
