@@ -69,6 +69,18 @@ public final class GtkPeerFactory implements PeerFactory {
         Gtk.g_set_application_name(name);
     }
 
+    private volatile Runnable aboutHandler;
+
+    @Override
+    public void setAboutHandler(Runnable handler) {
+        this.aboutHandler = handler;
+    }
+
+    /** Latest About handler registered via {@link io.github.swat.Toolkit#onAbout},
+     *  or {@code null} if none. Read at {@link GtkHeaderBarPeer} construction time
+     *  to decide whether to auto-append an About item to a burger menu. */
+    Runnable aboutHandler() { return aboutHandler; }
+
     private volatile io.github.swat.spi.Capabilities cachedCapabilities;
 
     @Override public io.github.swat.spi.Capabilities capabilities() {

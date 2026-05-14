@@ -23,10 +23,14 @@ public final class Demo {
     private Demo() {}
 
     public static void main(String[] args) {
-        Toolkit.launch(Demo::buildUi);
+        Toolkit.launch("SWAT Demo", Demo::buildUi);
     }
 
     private static void buildUi() {
+        // About goes in the platform's primary surface (macOS App menu / GTK
+        // burger menu). The framework places it; samples just register intent.
+        Toolkit.onAbout(Demo::showAbout);
+
         Label status = Label.of("Pick an item.");
         ListView fruits = ListView.of("Apple", "Banana", "Cherry", "Date", "Elderberry");
 
@@ -81,18 +85,16 @@ public final class Demo {
             .add(io.github.swat.Row.of(pickFile, pickFolder))
             .build();
 
-        // Same set of "primary" commands, placed where the host platform expects
-        // them: in the Adwaita header bar's burger menu on GTK, or as a top-level
-        // menu in the system menu bar on macOS (where header-bar menus aren't an
-        // idiom). HEADER_BAR_MENU gates the platform-appropriate path.
-        Menu.Builder fileMenu = Menu.builder("File")
+        // Sample-specific "primary" commands. About is NOT in this list — it's
+        // registered via Toolkit.onAbout above and the framework places it
+        // natively (burger menu on GTK, App menu on macOS). HEADER_BAR_MENU
+        // gates only the placement of these sample-owned items.
+        Menu fileMenu = Menu.builder("File")
             .action("New",  e -> Ui.invokeLater(() -> status.text("File → New clicked.")))
             .action("Open", e -> Ui.invokeLater(() -> status.text("File → Open clicked.")))
             .add(MenuSeparator.of())
-            .action("Close window", e -> Ui.invokeLater(Toolkit::shutdown));
-
-        Menu.Builder helpMenu = Menu.builder("Help")
-            .action("About SWAT", e -> showAbout());
+            .action("Close window", e -> Ui.invokeLater(Toolkit::shutdown))
+            .build();
 
         boolean burgerMenuSupported = Toolkit.supports(Capability.HEADER_BAR_MENU);
 
@@ -102,16 +104,15 @@ public final class Demo {
             .content(content);
 
         if (burgerMenuSupported) {
-            // Header-bar burger menu carries the "primary" command set.
+            // Header-bar burger menu carries the sample's primary commands;
+            // the framework appends an About item below in a trailing section.
             Menu burger = Menu.builder("")
                 .action("Option 1", e -> Ui.invokeLater(() -> status.text("Option 1")))
                 .action("Option 2", e -> Ui.invokeLater(() -> status.text("Option 2")))
                 .action("Option 3", e -> Ui.invokeLater(() -> status.text("Option 3")))
-                .separator()
-                .action("About", e -> showAbout())
                 .build();
             windowBuilder
-                .menuBar(MenuBar.of(fileMenu.build(), helpMenu.build()))
+                .menuBar(MenuBar.of(fileMenu))
                 .headerBar(HeaderBar.builder().menu(burger).build());
         } else {
             // No burger-menu idiom on this platform — surface the same items as
@@ -120,10 +121,8 @@ public final class Demo {
                 .action("Option 1", e -> Ui.invokeLater(() -> status.text("Option 1")))
                 .action("Option 2", e -> Ui.invokeLater(() -> status.text("Option 2")))
                 .action("Option 3", e -> Ui.invokeLater(() -> status.text("Option 3")))
-                .separator()
-                .action("About", e -> showAbout())
                 .build();
-            windowBuilder.menuBar(MenuBar.of(fileMenu.build(), demoMenu, helpMenu.build()));
+            windowBuilder.menuBar(MenuBar.of(fileMenu, demoMenu));
         }
 
         windowBuilder.build().show();

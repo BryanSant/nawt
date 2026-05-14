@@ -1,8 +1,11 @@
 package io.github.swat.backend.gtk;
 
+import io.github.swat.Toolkit;
 import io.github.swat.spi.HeaderBarConfig;
 import io.github.swat.spi.HeaderBarPeer;
+import io.github.swat.spi.MenuActionConfig;
 import io.github.swat.spi.Peer;
+import io.github.swat.spi.PeerFactory;
 
 import java.lang.foreign.MemorySegment;
 
@@ -24,6 +27,7 @@ final class GtkHeaderBarPeer implements HeaderBarPeer {
         // Pack the burger menu last so it sits at the trailing edge, just
         // inside the window-control close button (Adwaita convention).
         if (cfg.menu() instanceof GtkMenuPeer gm) {
+            injectAboutItem(gm);
             MemorySegment btn = Gtk.gtk_menu_button_new();
             Gtk.gtk_menu_button_set_icon_name(btn, "open-menu-symbolic");
             Gtk.gtk_menu_button_set_menu_model(btn, gm.gmenu());
@@ -35,6 +39,38 @@ final class GtkHeaderBarPeer implements HeaderBarPeer {
         } else if (cfg.menu() != null) {
             throw new IllegalArgumentException("Foreign MenuPeer: " + cfg.menu().getClass());
         }
+    }
+
+    /**
+     * If the application has registered an About handler via
+     * {@link Toolkit#onAbout(Runnable)}, append "About &lt;appName&gt;" to the burger
+     * menu's GMenu as its own trailing section (rendered below a separator).
+     * The user's {@code Menu} doesn't list About — the framework places it in
+     * the platform-appropriate surface, matching how the macOS App menu does so
+     * via {@code MacosMenuBarPeer.installAppMenu}.
+     */
+    private static void injectAboutItem(GtkMenuPeer gm) {
+        PeerFactory pf = Toolkit.requireLaunched().peerFactory();
+        if (!(pf instanceof GtkPeerFactory gpf)) return;
+        Runnable handler = gpf.aboutHandler();
+        if (handler == null) return;
+        String appName = Gtk.g_get_application_name();
+        String label = (appName == null || appName.isBlank()) ? "About" : "About " + appName;
+        GtkMenuActionPeer action = (GtkMenuActionPeer) pf.createMenuAction(
+            new MenuActionConfig(label, null, true));
+        // Dispatch on a virtual thread — the peer's onSelect runs its Runnable
+        // directly on the GTK signal callback (= UI thread). Handlers like
+        // MessageDialog.show() block via CompletableFuture.join(), which would
+        // deadlock the main loop. This matches MenuAction.dispatch's pattern.
+        action.onSelect(() -> Thread.startVirtualThread(() -> {
+            try { handler.run(); }
+            catch (Throwable t) { t.printStackTrace(); }
+        }));
+        // GtkMenuSeparatorPeer is a section boundary in GtkMenuPeer.rebuild,
+        // so appending {separator, action} yields the About in a fresh trailing
+        // section — visually a separator above it inside the burger.
+        gm.append(pf.createMenuSeparator());
+        gm.append(action);
     }
 
     MemorySegment widget() { return widget; }

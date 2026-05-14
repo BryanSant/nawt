@@ -74,6 +74,8 @@ final class Gtk {
         bind("g_free", FunctionDescriptor.ofVoid(PTR));
     private static final MethodHandle G_SET_APPLICATION_NAME =
         bind("g_set_application_name", FunctionDescriptor.ofVoid(PTR));
+    private static final MethodHandle G_GET_APPLICATION_NAME =
+        bind("g_get_application_name", FunctionDescriptor.of(PTR));
 
     /* ---------- GIO / clipboard / launcher (resolved lazily; may be in same lib path) ---------- */
 
@@ -522,6 +524,15 @@ final class Gtk {
     static void g_set_application_name(String name) {
         try (var arena = Arena.ofConfined()) {
             G_SET_APPLICATION_NAME.invoke(arena.allocateFrom(name));
+        } catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** Read back the GLib application name, or {@code null} if unset. */
+    static String g_get_application_name() {
+        try {
+            MemorySegment p = (MemorySegment) G_GET_APPLICATION_NAME.invoke();
+            if (p == null || p.address() == 0) return null;
+            return p.reinterpret(Long.MAX_VALUE).getString(0);
         } catch (Throwable t) { throw new RuntimeException(t); }
     }
 
