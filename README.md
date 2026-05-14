@@ -1,4 +1,4 @@
-<img width="850" height="422" alt="nawt-ui" src="https://github.com/user-attachments/assets/84bffa93-7be4-4f97-b17c-5e72f6c1dfbc" />
+<img width="850" height="272" alt="nawt" src="https://github.com/user-attachments/assets/7f4643de-eac6-40ca-8cbf-663ba7112387" />
 
 # NAWT — Native Abstract Window Toolkit
 
