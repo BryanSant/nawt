@@ -116,6 +116,19 @@ final class MacosWindowPeer implements WindowPeer {
 
     @Override
     public void setContent(Peer content) {
+        // Special case: NavigationSplit is hosted by an NSSplitViewController,
+        // not a raw view. Use setContentViewController: so the window picks up
+        // the controller's chrome (titlebar extension, "toggle sidebar"
+        // toolbar item when the window has an NSToolbar, etc.).
+        if (content instanceof MacosNavigationSplitPeer ns) {
+            Objc.sendVoid(window, Objc.sel("setContentViewController:"), ns.viewController());
+            if (fitContent) {
+                MemorySegment cv = Objc.sendPtr(window, Objc.sel("contentView"));
+                applyFittingSize(cv);
+                Objc.sendVoid(window, Objc.sel("center"));
+            }
+            return;
+        }
         MemorySegment view = MacosContainerPeer.peerView(content);
         // Top-level content needs to fill the window. Switch this view to
         // autoresize-mask layout (NSStackView etc. still drive their own
@@ -132,34 +145,50 @@ final class MacosWindowPeer implements WindowPeer {
         //     to the stale configured size.
         //   - !fitContent: force the size back to what the caller requested
         //     via .size(w, h) (the historical behaviour).
+        if (fitContent) {
+            applyFittingSize(view);
+            Objc.sendVoid(window, Objc.sel("center"));
+        } else {
+            applyConfiguredSize();
+        }
+    }
+
+    /**
+     * Set the window's content size to {@code view}'s Auto Layout
+     * {@code fittingSize}, and cache the result as the new {@code width}/{@code height}.
+     */
+    private void applyFittingSize(MemorySegment view) {
         try (var arena = Arena.ofConfined()) {
+            MemorySegment fitting;
+            try {
+                fitting = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
+                        NSSIZE, Objc.PTR, Objc.PTR))
+                    .invoke(arena, view, Objc.sel("fittingSize"));
+            } catch (Throwable t) { throw new RuntimeException(t); }
+            double fw = fitting.getAtIndex(ValueLayout.JAVA_DOUBLE, 0);
+            double fh = fitting.getAtIndex(ValueLayout.JAVA_DOUBLE, 1);
+            this.width = (int) Math.ceil(fw);
+            this.height = (int) Math.ceil(fh);
             MemorySegment size = arena.allocate(NSSIZE);
-            if (fitContent) {
-                MemorySegment fitting;
-                try {
-                    fitting = (MemorySegment) Objc.msgSend(FunctionDescriptor.of(
-                            NSSIZE, Objc.PTR, Objc.PTR))
-                        .invoke(arena, view, Objc.sel("fittingSize"));
-                } catch (Throwable t) { throw new RuntimeException(t); }
-                double fw = fitting.getAtIndex(ValueLayout.JAVA_DOUBLE, 0);
-                double fh = fitting.getAtIndex(ValueLayout.JAVA_DOUBLE, 1);
-                this.width = (int) Math.ceil(fw);
-                this.height = (int) Math.ceil(fh);
-                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, fw);
-                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, fh);
-            } else {
-                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, (double) width);
-                size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, (double) height);
-            }
+            size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, fw);
+            size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, fh);
             try {
                 Objc.msgSend(FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, NSSIZE))
                     .invoke(window, Objc.sel("setContentSize:"), size);
             } catch (Throwable t) { throw new RuntimeException(t); }
         }
-        // Re-center the window after fitContent resized it, so the smaller
-        // window doesn't end up anchored at the original top-left.
-        if (fitContent) {
-            Objc.sendVoid(window, Objc.sel("center"));
+    }
+
+    /** Force the window's content size back to the cached {@code width}/{@code height}. */
+    private void applyConfiguredSize() {
+        try (var arena = Arena.ofConfined()) {
+            MemorySegment size = arena.allocate(NSSIZE);
+            size.setAtIndex(ValueLayout.JAVA_DOUBLE, 0, (double) width);
+            size.setAtIndex(ValueLayout.JAVA_DOUBLE, 1, (double) height);
+            try {
+                Objc.msgSend(FunctionDescriptor.ofVoid(Objc.PTR, Objc.PTR, NSSIZE))
+                    .invoke(window, Objc.sel("setContentSize:"), size);
+            } catch (Throwable t) { throw new RuntimeException(t); }
         }
     }
 

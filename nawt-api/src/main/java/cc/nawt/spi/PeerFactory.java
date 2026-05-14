@@ -102,6 +102,17 @@ public interface PeerFactory {
     }
 
     /**
+     * Create a navigation-split container peer. Default impl throws
+     * {@link UnsupportedOperationException}. Callers should check
+     * {@link cc.nawt.Capability#NAVIGATION_SPLIT} first.
+     */
+    default NavigationSplitPeer createNavigationSplit(NavigationSplitConfig config) {
+        throw new UnsupportedOperationException(
+            "NavigationSplit is not supported on this backend. "
+            + "Check Toolkit.supports(Capability.NAVIGATION_SPLIT) before constructing one.");
+    }
+
+    /**
      * Create a header-bar peer. The bar's title is taken from the host
      * {@link WindowPeer}'s title; the config supplies pre-built start/end
      * peers that will be packed into the bar.
